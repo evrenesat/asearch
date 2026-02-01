@@ -26,7 +26,6 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 6. **Persistence**: The interaction is saved to your local history for future reference.
 
 
-
 ## Installation
 
 ```bash
@@ -234,10 +233,51 @@ Run with `-v` to see the loaded configuration:
 ask -v
 ```
 
+
+## Web Search
+
+aSearch works best with a web search tool. You can use SearXNG or Serper API. 
+
+### Serper API
+Serper is a paid service, but gives 2500 requests for free. 
+
+### Install & configure SearXNG
+SearXNG is free and open source, it's easy to set up with a single docker command.
+
+Following command taken from [SearXNG docs](https://docs.searxng.org/admin/installation-docker.html#instancing).
+```bash
+docker pull docker.io/searxng/searxng:latest
+
+# Create directories for configuration and persistent data
+$ mkdir -p ./searxng/config/ ./searxng/data/
+$ cd ./searxng/
+
+# Run the container
+$ docker run --name searxng -d \
+    -p 8888:8080 \
+    -v "./config/:/etc/searxng/" \
+    -v "./data/:/var/cache/searxng/" \
+    docker.io/searxng/searxng:latest
+```
+You need to add "-json" to the formats section of the default searxng config.yaml file.
+```yaml
+  # remove format to deny access, use lower case.
+  # formats: [html, csv, json, rss]
+  formats:
+    - html
+    - json
+```
+Then restart the container.
+```bash
+docker restart searxng
+```
+
+
+
 ## Requirements
 
 - Python 3.10+
-- Running SearXNG instance (default: http://localhost:8888)
+- Running SearXNG instance or Serper API key.
 - LM Studio (for local models) or API keys for remote models
 
 ## License
