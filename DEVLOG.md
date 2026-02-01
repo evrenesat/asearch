@@ -2,6 +2,9 @@
 
 ## 2026-02-01
 
+- **Refactor**: Removed **multi-threaded execution** from `get_url_content` tool.
+  - Replaced `ThreadPoolExecutor` with sequential execution to prevent rate limiting.
+  - Simplified `execute_get_url_content` logic.
 - **Feat**: Made **summarization prompts configurable** via `config.toml` under `[prompts]` section.
   - Added `summarize_query` and `summarize_answer` templates with `{QUERY_SUMMARY_MAX_CHARS}` and `{ANSWER_SUMMARY_MAX_CHARS}` placeholders.
   - Updated `llm.py` to use these templates for internal summarization tasks.

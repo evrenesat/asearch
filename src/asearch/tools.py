@@ -4,7 +4,6 @@ import json
 import os
 import requests
 import subprocess
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -183,13 +182,8 @@ def execute_get_url_content(
         return {"error": "No URLs provided."}
 
     results = {}
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_url = {
-            executor.submit(fetch_single_url, url, max_chars, summarize): url
-            for url in urls
-        }
-        for future in as_completed(future_to_url):
-            results.update(future.result())
+    for url in urls:
+        results.update(fetch_single_url(url, max_chars, summarize))
 
     return results
 
