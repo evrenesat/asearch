@@ -14,6 +14,7 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 - **Deep Dive Mode**: Recursively explores links found on web pages for in-depth information gathering.
 - **Predefined Prompts**: Save and quickly invoke common prompt patterns using simple slashes (e.g., `/gn` for get latest news from The Guardian).
 - **Clipboard Integration**: Use `/cp` to expand the query with clipboard content.
+- **Custom Tools**: Expose any CLI command as a tool for the LLM. Define your own commands and parameters in `config.toml`.
 
 ## How it Works
 
@@ -147,6 +148,55 @@ ask -fs latest news on topic
 - `q30` - Qwen3 30B
 - `q34` - Qwen3 4B
 - `q34t` - Qwen3 4B Thinking
+
+## Custom Tools
+
+You can define your own tools in `config.toml` that the LLM can use to interact with your local system. Each tool runs a CLI command and returns the output to the LLM.
+
+Example configuration for a `list_dir` tool:
+
+```toml
+[tool.list_dir]
+command = "ls"
+description = "List the contents of a directory."
+
+[tool.list_dir.parameters]
+type = "object"
+required = ["path"]
+
+[tool.list_dir.parameters.properties.path]
+type = "string"
+default = "."
+```
+
+Example configuration for a `grep_search` tool:
+
+```toml
+[tool.grep_search]
+command = "grep -r {pattern} {path}"
+description = "Search for a pattern in files recursively."
+
+[tool.grep_search.parameters]
+type = "object"
+required = ["pattern"]
+
+[tool.grep_search.parameters.properties.pattern]
+type = "string"
+description = "The regex pattern to search for."
+
+[tool.grep_search.parameters.properties.path]
+type = "string"
+description = "The directory path to search in."
+default = "."
+```
+
+> [!CAUTION]
+> **Security Risk**: Custom tools execute commands using your system shell. While aSearch attempts to quote arguments safely, exposing powerful CLI tools to an LLM can be risky. Use this feature with caution.
+
+### How it works:
+- **Placeholders**: Use `{param_name}` in the `command` string to inject arguments. If no placeholders are found, arguments are appended to the command.
+- **Quoting**: All arguments are automatically cleaned (inner double-quotes removed) and wrapped in double-quotes for safety.
+- **Execution**: Commands are executed via terminal shell, allowing for advanced piping and redirection.
 
 ## Configuration options
 [See default configuration](./src/asearch/config.toml)

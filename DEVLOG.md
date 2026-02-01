@@ -2,6 +2,12 @@
 
 ## 2026-02-01
 
+- **Feat**: Introduced **custom user-defined tool support**.
+  - Users can define tools in `config.toml` under `[tool.NAME]`.
+  - Supports command execution via `subprocess`.
+  - Arguments are automatically quoted (inner quotes removed and wrapped in double quotes).
+  - Supports placeholder replacement (e.g., `command = "ls {path}"`) or positional appending.
+  - Default `list_dir` tool added to `config.toml`.
 - **Feat**: Added **clipboard support** via `/cp` slash command.
   - Can be used anywhere in the query (not just at start).
   - Integrates with `pyperclip`.

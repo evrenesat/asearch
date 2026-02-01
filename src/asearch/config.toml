@@ -57,6 +57,23 @@ gn = "Give me latest news from The Guardian, use https://www.theguardian.com/eur
 wh = "how is weather in "
 ex = "Explain this: /cp"
 
+# --- User defined tools ---
+# These tools allow you to expose CLI commands to the LLM.
+# Use {parameter_name} in the command to inject arguments, or they will be appended.
+[tool.list_dir]
+command = "ls"
+description = "List the contents of a directory."
+parameter_type = "object"
+[tool.list_dir.parameters]
+type = "object"
+required = ["path"]
+
+[tool.list_dir.parameters.properties.path]
+type = "string"
+default = "."
+
+
+
 # --- Internal Prompt Templates ---
 # Templates used to construct system prompts for different modes.
 # Placeholders like {MAX_TURNS} and {n} are filled at runtime.

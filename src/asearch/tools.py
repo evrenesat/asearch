@@ -3,6 +3,7 @@
 import json
 import os
 import requests
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List
@@ -14,6 +15,7 @@ from asearch.config import (
     SEARCH_PROVIDER,
     SERPER_API_URL,
     SERPER_API_KEY_ENV,
+    CUSTOM_TOOLS,
 )
 from asearch.html import HTMLStripper, strip_tags, strip_think_tags
 
@@ -207,6 +209,56 @@ def execute_get_date_time() -> Dict[str, Any]:
     return {"date_time": datetime.now().isoformat()}
 
 
+def _execute_custom_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a custom tool defined in config.toml."""
+    tool_cfg = CUSTOM_TOOLS.get(name)
+    if not tool_cfg:
+        return {"error": f"Custom tool configuration for '{name}' not found."}
+
+    cmd_base = tool_cfg.get("command", "")
+    if not cmd_base:
+        return {"error": f"No command defined for custom tool '{name}'."}
+
+    # Prepare arguments: remove double quotes and add them back
+    processed_args = {}
+    for k, v in args.items():
+        # Remove existing double quotes and wrap in new ones
+        clean_val = str(v).replace('"', "")
+        processed_args[k] = f'"{clean_val}"'
+
+    try:
+        # Check if the command uses placeholders
+        if "{" in cmd_base and "}" in cmd_base:
+            try:
+                # Format only with existing keys to avoid KeyError for optional params
+                # This is a bit naive but works if placeholders match properties
+                cmd_str = cmd_base.format(**processed_args)
+            except KeyError as e:
+                return {"error": f"Missing required parameter for command: {e}"}
+        else:
+            # Append arguments in order of appearance in properties if not using placeholders
+            param_order = tool_cfg.get("parameters", {}).get("properties", {}).keys()
+            arg_list = []
+            for k in param_order:
+                if k in processed_args:
+                    arg_list.append(processed_args[k])
+
+            cmd_str = f"{cmd_base} {' '.join(arg_list)}".strip()
+
+        print(f"Executing custom tool command: {cmd_str}")
+        result = subprocess.run(
+            cmd_str, shell=True, capture_output=True, text=True, timeout=30
+        )
+
+        return {
+            "stdout": result.stdout.strip(),
+            "stderr": result.stderr.strip(),
+            "exit_code": result.returncode,
+        }
+    except Exception as e:
+        return {"error": f"Failed to execute custom tool '{name}': {str(e)}"}
+
+
 def dispatch_tool_call(
     call: Dict[str, Any], max_chars: int, summarize: bool
 ) -> Dict[str, Any]:
@@ -223,4 +275,8 @@ def dispatch_tool_call(
         return execute_get_url_details(args, max_chars)
     if name == "get_date_time":
         return execute_get_date_time()
+
+    if name in CUSTOM_TOOLS:
+        return _execute_custom_tool(name, args)
+
     return {"error": f"Unknown tool: {name}"}

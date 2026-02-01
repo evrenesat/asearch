@@ -56,11 +56,32 @@ def load_config() -> Dict[str, Any]:
         print(f"Error loading bundled config: {e}")
         # Build a minimal fallback if bundled config fails
         default_config = {
-            "general": {},
+            "general": {
+                "query_summary_max_chars": 40,
+                "answer_summary_max_chars": 200,
+                "searxng_url": "http://localhost:8888",
+                "max_turns": 20,
+                "default_model": "gf",
+                "summarization_model": "lfm",
+            },
             "api": {},
-            "models": {},
-            "prompts": {},
+            "models": {
+                "gf": {
+                    "id": "gemini-flash-latest",
+                    "api": "gemini",
+                    "max_chars": 1000000,
+                    "context_size": 1000000,
+                }
+            },
+            "prompts": {
+                "system_prefix": "",
+                "force_search": "",
+                "system_suffix": "",
+                "deep_research": "",
+                "deep_dive": "",
+            },
             "user_prompts": {},
+            "tool": {},
         }
 
     # Initialize from defaults
@@ -143,6 +164,10 @@ DEEP_RESEARCH_PROMPT_TEMPLATE = _prompts["deep_research"]
 DEEP_DIVE_PROMPT_TEMPLATE = _prompts["deep_dive"]
 USER_PROMPTS = _CONFIG.get("user_prompts", {})
 
+# --- Custom Tools ---
+# These are loaded from [tool.NAME] sections in config.toml
+CUSTOM_TOOLS = _CONFIG.get("tool", {})
+
 
 # --- Tool Definitions ---
 # Tools are code-coupled schemas, keeping them here as constants.
@@ -209,3 +234,17 @@ TOOLS = [
         },
     },
 ]
+
+# Append custom tools from config.toml
+for tool_name, tool_data in CUSTOM_TOOLS.items():
+    tool_entry = {
+        "type": "function",
+        "function": {
+            "name": tool_name,
+            "description": tool_data.get("description", f"Custom tool: {tool_name}"),
+            "parameters": tool_data.get(
+                "parameters", {"type": "object", "properties": {}}
+            ),
+        },
+    }
+    TOOLS.append(tool_entry)
