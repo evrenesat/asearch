@@ -2,6 +2,13 @@
 
 ## 2026-02-01
 
+- **Refactor**: Moved configuration to `~/.config/asearch/config.toml` (TOML format).
+- **Feat**: Added `ConfigLoader` to `src/asearch/config.py` to auto-generate default config on first run.
+- **Feat**: Added support for defining API keys directly in `config.toml` or via environment variables (customizable names).
+- **Refactor**: Removed `python-dotenv` dependency and `.env` file loading logic.
+- **Refactor**: Relocated default history database to `~/.config/asearch/history.db`. Path is configurable via `config.toml` or environment variable.
+- **Test**: Verified config generation, loading, and API key precedence. Ran regression tests (50 passed).
+
 ### Dependency Cleanup
 - Removed `liteLLM` dependency (simplified project, reduced bloat).
 - Implemented naive token counting: `len(content) // 4`.
