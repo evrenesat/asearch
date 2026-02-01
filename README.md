@@ -1,6 +1,27 @@
-# asearch
+# aSearch
 
 AI-powered web search CLI with LLM tool-calling capabilities.
+
+aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interface that brings AI-powered search and research capabilities directly to your terminal. It LLMs and tools to synthesize answers from the web.
+
+## Key Features
+
+- **Multi-Model Support**: Easily define and switch between various LLMs and providers that supports OpenAI compatible API.
+- **Tool-Calling Integration**: Models can autonomously perform web searches, fetch URL content, and get current date/time to provide accurate, up-to-date answers.
+- **Intelligent Content Fetching**: Automatically strips HTML noise (scripts, styles) to provide clean text context to the models.
+- **Conversation History**: Maintains a local SQLite database of your queries and answers, allowing for context-aware follow-up questions.
+- **Deep Research Mode**: Automatically performs multiple searches to provide comprehensive analysis of complex topics.
+- **Deep Dive Mode**: Recursively explores links found on web pages for in-depth information gathering.
+- **Predefined Prompts**: Save and quickly invoke common prompt patterns using simple slashes (e.g., `/gn` for get latest news from The Guardian).
+
+## How it Works
+
+1. **User Query**: You provide a query to the `ask` command.
+2. **Model Selection**: aSearch initializes the selected LLM based on your configuration.
+3. **Tool Loop**: The LLM analyzes your query. If it needs real-world data, it calls integrated tools (like `web_search` via SearXNG).
+4. **Context Synthesis**: aSearch fetches the data, cleans it, and feeds it back to the LLM. This process can repeat for up to 15 turns for complex research.
+5. **Final Answer**: The LLM synthesizes all gathered information into a concise, formatted response.
+6. **Persistence**: The interaction is saved to your local history for future reference.
 
 ## Installation
 
@@ -18,7 +39,7 @@ pip install -e .
 
 ```bash
 ➜  ~ ask -h
-usage: ask [-h] [-m {q34t,q34,lfm,q8,q30,gf}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-f] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-p PRINT_IDS] [-v] [query ...]
+usage: ask [-h] [-m {q34t,q34,lfm,q8,q30,gf}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-f] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-pa PRINT_IDS] [-p] [-v] [query ...]
 
 Tool-calling CLI with model selection.
 
@@ -31,7 +52,7 @@ options:
                         Select the model alias
   -d, --deep-research [DEEP_RESEARCH]
                         Enable deep research mode (optional: specify min number of queries, default 5)
-  -dd, --deep-dive      Enable deep dive mode (extracts links and encourages recursive research)
+  -dd, --deep-dive      Enable deep dive mode (extracts links and encourages reading more pages from same domain)
   -H, --history [HISTORY]
                         Show last N queries (default 10) and exit.
   -c, --continue-chat CONTINUE_IDS
@@ -42,8 +63,9 @@ options:
   --cleanup-db [CLEANUP_DB]
                         Delete history records. usage: --cleanup-db [ID|ID-ID|ID,ID] or --cleanup-db --all
   --all                 Used with --cleanup-db to delete ALL history.
-  -p, --print-answer PRINT_IDS
+  -pa, --print-answer PRINT_IDS
                         Print the answer(s) for specific history IDs (comma-separated).
+  -p, --prompts         List all configured user prompts.
   -v, --verbose         Enable verbose output (prints config and LLM inputs).
 
 
@@ -112,12 +134,8 @@ ask -m gf what is quantum computing
 # Force web search
 ask -fs latest news on topic
 
-# Clean up history
-ask --cleanup-db 1-5
-ask --cleanup-db --all
-```
 
-## Available Models
+## Pre-configured model definitions
 
 - `gf` - Google Gemini Flash (default)
 - `lfm` - Liquid LFM 2.5

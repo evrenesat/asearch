@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
         "-dd",
         "--deep-dive",
         action="store_true",
-        help="Enable deep dive mode (extracts links and encourages recursive research)",
+        help="Enable deep dive mode (extracts links and encourages reading more pages from same domain)",
     )
     parser.add_argument(
         "-H",

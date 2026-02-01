@@ -40,6 +40,9 @@
 - Conversation loop returns final answer for storage
 - Added `force_search` logic to system prompt
 
+### Documentation
+- Updated `README.md` with "Key Features" and "How it Works" sections to provide a clearer overview of the tool's purpose and functionality.
+
 
 ## 2026-01-31
 
