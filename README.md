@@ -45,18 +45,6 @@ pip install -e .
 # Basic query
 ask what is the weather in Berlin
 
-# Show history
-ask -H
-Last 6 Queries:
-------------------------------------------------------------
-10   | what is the weather in Berlin                      | The weather in Kreuzberg, Berlin is currently c...
-9    | what is this about                                 | This analysis explores dad jokes humor, combin...
-8    | summarize please                                   | The humor in dad jokes comes from blending scie...
-7    | explain more                                       | The humor comes from blending scientific terms ...
-2    | is that funny                                      | This science pun cleverly blends scientific ter...
-1    | tell me a joke                                     | Scientists often joke that atoms don’t trust th...
-------------------------------------------------------------
-
 # Continue from previous query (by ID)
 ask -c 1 tell me more about that
 
@@ -88,8 +76,9 @@ Here is the forecast for today and the next couple of days:
 
 Query completed in 3.88 seconds
 
-➜  ~ ask -h
-usage: ask [-h] [-m {q34t,q34,lfm,q8,q30,gf}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-f] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-pa PRINT_IDS] [-p] [-v] [query ...]
+usage: ask [-h] [-m {gf,glmair,glmflash,q34t,q34,lfm,q8,q30,onano,omini}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-pa PRINT_IDS]
+           [-p] [-v]
+           [query ...]
 
 Tool-calling CLI with model selection.
 
@@ -98,7 +87,7 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -m, --model {q34t,q34,lfm,q8,q30,gf}
+  -m, --model {gf,glmair,glmflash,q34t,q34,lfm,q8,q30,onano,omini}
                         Select the model alias
   -d, --deep-research [DEEP_RESEARCH]
                         Enable deep research mode (optional: specify min number of queries, default 5)
@@ -107,8 +96,7 @@ options:
                         Show last N queries (default 10) and exit.
   -c, --continue-chat CONTINUE_IDS
                         Continue conversation with context from specific history IDs (comma-separated, e.g. '1,2').
-  -f, --full            Use full content of previous answers for context instead of summaries.
-  -s, --summarize       Enable summarize mode (summarizes the content of the URL)
+  -s, --summarize       Enable summarize mode (summarizes URL content and uses summaries for chat context)
   -fs, --force-search   Force the model to use web search (default: False).
   --cleanup-db [CLEANUP_DB]
                         Delete history records. usage: --cleanup-db [ID|ID-ID|ID,ID] or --cleanup-db --all
@@ -117,8 +105,6 @@ options:
                         Print the answer(s) for specific history IDs (comma-separated).
   -p, --prompts         List all configured user prompts.
   -v, --verbose         Enable verbose output (prints config and LLM inputs).
-
-
 ```
 
 **Deep research mode** (encourages model to perform multiple searches)
@@ -140,6 +126,7 @@ ask -fs latest news on topic
 
 **Pre-configured model definitions**
 
+Followin model definitions ship with default config.toml, but you can add any number of models that are served with an OpenAI compatible API.
 
 - `gf` - Google Gemini Flash (default)
 - `lfm` - Liquid LFM 2.5

@@ -2,6 +2,15 @@
 
 ## 2026-02-01
 
+- **Refactor**: Consolidated `-f/--full` and `-s/--summarize` into a single `-s/--summarize` parameter.
+  - Removed `-f/--full` flag.
+  - Updated `-s/--summarize` to handle both URL content summarization and chat context summarization.
+  - Chat context now defaults to full content, and uses summaries only when `-s` is provided.
+  - Updated `cli.py` and consolidated tests in `test_cli.py`.
+
+
+## 2026-02-01
+
 - **Fix**: Added **configurable request timeout** for LLM API calls.
   - Added `request_timeout` (default 60s) to `[general]` section in `config.toml`.
   - Updated `get_llm_msg` in `llm.py` to use `REQUEST_TIMEOUT` from `config.py`.

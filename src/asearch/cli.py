@@ -63,16 +63,10 @@ def parse_args() -> argparse.Namespace:
         help="Continue conversation with context from specific history IDs (comma-separated, e.g. '1,2').",
     )
     parser.add_argument(
-        "-f",
-        "--full",
-        action="store_true",
-        help="Use full content of previous answers for context instead of summaries.",
-    )
-    parser.add_argument(
         "-s",
         "--summarize",
         action="store_true",
-        help="Enable summarize mode (summarizes the content of the URL)",
+        help="Enable summarize mode (summarizes URL content and uses summaries for chat context)",
     )
     parser.add_argument(
         "-fs",
@@ -131,7 +125,7 @@ def show_history(history_arg: int) -> None:
     print("-" * 60)
 
 
-def load_context(continue_ids: str, full_content: bool) -> Optional[str]:
+def load_context(continue_ids: str, summarize: bool) -> Optional[str]:
     """Load context from previous interactions."""
     try:
         raw_ids = [x.strip() for x in continue_ids.split(",")]
@@ -181,7 +175,7 @@ def load_context(continue_ids: str, full_content: bool) -> Optional[str]:
         # But `load_context` returns a joined string.
         # Let's keep distinct IDs.
         resolved_ids = sorted(list(set(resolved_ids)))
-
+        full_content = not summarize
         context_str = get_interaction_context(resolved_ids, full=full_content)
         if context_str:
             print(f"\n[Loaded context from IDs: {', '.join(map(str, resolved_ids))}]")
@@ -217,7 +211,7 @@ def build_messages(args: argparse.Namespace, context_str: str) -> List[Dict[str,
     return messages
 
 
-def print_answers(ids_str: str, full: bool) -> None:
+def print_answers(ids_str: str, summarize: bool) -> None:
     """Print answers for specific history IDs."""
     try:
         ids = [int(x.strip()) for x in ids_str.split(",")]
@@ -225,7 +219,7 @@ def print_answers(ids_str: str, full: bool) -> None:
         print("Error: Invalid ID format. Use comma-separated integers.")
         return
 
-    context = get_interaction_context(ids, full=full)
+    context = get_interaction_context(ids, full=not summarize)
     if not context:
         print("No records found for the given IDs.")
         return
@@ -303,7 +297,7 @@ def handle_print_answer_implicit(args: argparse.Namespace) -> bool:
         possible_ids = [x for x in possible_ids if x]
         try:
             clean_ids_str = ",".join(possible_ids)
-            print_answers(clean_ids_str, args.full)
+            print_answers(clean_ids_str, args.summarize)
             return True
         except ValueError:
             pass
@@ -319,6 +313,7 @@ def main() -> None:
         print(f"Selected Model: {args.model}")
         print(f"Deep Research: {args.deep_research}")
         print(f"Deep Dive: {args.deep_dive}")
+        print(f"Summarize: {args.summarize}")
         print(f"Force Search: {args.force_search}")
         print("-" * 20)
         from asearch.config import (
@@ -377,7 +372,7 @@ def main() -> None:
 
     # Handle Explicit Print Answer
     if args.print_ids:
-        print_answers(args.print_ids, args.full)
+        print_answers(args.print_ids, args.summarize)
         return
 
     # Handle Implicit Print Answer (query is list of ints)
@@ -411,7 +406,7 @@ def main() -> None:
     # Handle Context
     context_str = ""
     if args.continue_ids:
-        context_str = load_context(args.continue_ids, args.full)
+        context_str = load_context(args.continue_ids, args.summarize)
         if context_str is None:
             return
 

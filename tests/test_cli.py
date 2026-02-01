@@ -24,7 +24,6 @@ def mock_args():
         deep_dive=False,
         history=None,
         continue_ids=None,
-        full=False,
         summarize=False,
         force_search=False,
         cleanup_db=None,
@@ -59,7 +58,6 @@ def test_parse_args_options():
             "20",
             "-c",
             "1,2",
-            "-f",
             "-s",
             "-fs",
         ],
@@ -70,7 +68,6 @@ def test_parse_args_options():
         assert args.deep_dive is True
         assert args.history == 20
         assert args.continue_ids == "1,2"
-        assert args.full is True
         assert args.summarize is True
         assert args.force_search is True
 
@@ -91,7 +88,7 @@ def test_show_history(mock_get_history, capsys):
 @patch("asearch.cli.get_interaction_context")
 def test_load_context_success(mock_get_context):
     mock_get_context.return_value = "Context Content"
-    result = load_context("1,2", False)
+    result = load_context("1,2", True)
     assert result == "Context Content"
     mock_get_context.assert_called_with([1, 2], full=False)
 
@@ -117,13 +114,13 @@ def test_load_context_relative_success(mock_get_context, mock_get_history):
     # Test ~1 -> ID 5
     result = load_context("~1", False)
     mock_get_history.assert_called_with(limit=1)
-    mock_get_context.assert_called_with([5], full=False)
+    mock_get_context.assert_called_with([5], full=True)
     assert result == "Context Content"
 
     # Test ~2 -> ID 4
     result = load_context("~2", False)
     mock_get_history.assert_called_with(limit=2)
-    mock_get_context.assert_called_with([4], full=False)
+    mock_get_context.assert_called_with([4], full=True)
 
 
 @patch("asearch.cli.get_history")
@@ -172,7 +169,7 @@ def test_build_messages_with_context(mock_args):
 @patch("asearch.cli.get_interaction_context")
 def test_print_answers(mock_get_context, capsys):
     mock_get_context.return_value = "Answer Content"
-    print_answers("1,2", True)
+    print_answers("1,2", False)
     captured = capsys.readouterr()
     assert "Answer Content" in captured.out
     mock_get_context.assert_called_with([1, 2], full=True)
@@ -205,7 +202,7 @@ def test_handle_print_answer_implicit(mock_print_answers):
     args.full = False
 
     assert handle_print_answer_implicit(args) is True
-    mock_print_answers.assert_called_with("1,2", False)
+    mock_print_answers.assert_called_with("1,2", args.summarize)
 
 
 def test_handle_print_answer_implicit_fail():
@@ -226,7 +223,6 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
         deep_dive=False,
         history=None,
         continue_ids=None,
-        full=False,
         summarize=False,
         force_search=False,
         cleanup_db=None,
@@ -271,7 +267,6 @@ def test_main_flow_verbose(
         deep_dive=False,
         history=None,
         continue_ids=None,
-        full=False,
         summarize=False,
         force_search=False,
         cleanup_db=None,
