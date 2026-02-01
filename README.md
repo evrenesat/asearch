@@ -54,11 +54,29 @@ ask --cleanup-db --all
 
 ## Configuration
 
-Create a `.env` file in the project root:
+On first run, a default configuration file is created at `~/.config/asearch/config.toml`. You can edit this file to configure models, API keys, and other settings.
 
-```env
-GOOGLE_API_KEY=your_api_key_here
-SEARXNG_HISTORY_DB_PATH=/custom/path/to/history.db
+### API Keys
+You can set API keys in two ways:
+1. **Environment Variables**: Set `GOOGLE_API_KEY` (or other configured env vars) in your shell.
+2. **Config File**: Add keys directly to `[api.name]` sections in `config.toml`.
+
+Example `config.toml`:
+```toml
+[general]
+default_model = "gf"
+
+[api.gemini]
+api_key_env = "GOOGLE_API_KEY"
+
+[api.lmstudio]
+url = "http://localhost:1234/v1/chat/completions"
+```
+
+### Verification
+Run with `-v` to see the loaded configuration:
+```bash
+ask -v
 ```
 
 ## Requirements
