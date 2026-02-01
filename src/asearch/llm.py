@@ -55,7 +55,10 @@ def count_tokens(messages: List[Dict[str, Any]]) -> int:
 
 
 def get_llm_msg(
-    model_id: str, messages: List[Dict[str, Any]], tools: Optional[List[Dict]] = TOOLS
+    model_id: str,
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict]] = TOOLS,
+    verbose: bool = False,
 ) -> Dict[str, Any]:
     """Send messages to the LLM and get a response."""
     # Find the model config based on model_id
@@ -89,6 +92,20 @@ def get_llm_msg(
 
     max_retries = 5
     backoff = 2
+
+    if verbose:
+        print(f"\n[DEBUG] Sending to LLM ({model_id})...")
+        print(f"Tools enabled: {bool(tools)}")
+        print("Last message sent:")
+        if messages:
+            last_msg = messages[-1]
+            content = last_msg.get("content", "")
+            if content and len(content) > 500:
+                print(f"  Role: {last_msg['role']}")
+                print(f"  Content (truncated): {content[:500]}...")
+            else:
+                print(f"  {json.dumps(last_msg, indent=2)}")
+        print("-" * 20)
 
     for attempt in range(max_retries):
         try:
@@ -137,7 +154,10 @@ def construct_system_prompt(
 
 
 def run_conversation_loop(
-    model_config: Dict[str, Any], messages: List[Dict[str, Any]], summarize: bool
+    model_config: Dict[str, Any],
+    messages: List[Dict[str, Any]],
+    summarize: bool,
+    verbose: bool = False,
 ) -> str:
     """Run the multi-turn conversation loop with tool execution."""
     turn = 0
@@ -168,7 +188,7 @@ def run_conversation_loop(
             if messages and messages[0]["role"] == "system":
                 messages[0]["content"] = original_system_prompt + status_msg
 
-            msg = get_llm_msg(model_config["id"], messages)
+            msg = get_llm_msg(model_config["id"], messages, verbose=verbose)
             calls = extract_calls(msg, turn)
             if not calls:
                 final_answer = strip_think_tags(msg.get("content", ""))

@@ -7,6 +7,11 @@
 - Implemented naive token counting: `len(content) // 4`.
 - Updated tests and matched `run_conversation_loop` tracking.
 
+### Debug Flag
+- Added `-v` / `--verbose` flag.
+- Prints full configuration (models, constants) at startup.
+- Prints LLM input previews (truncated) and tool usage status.
+
 ### Database Cleanup & Bug Fixes
 - Added `--cleanup-db` (delete by ID/list/range/all)
 - Fixed duplicate history output (`ask -H`)

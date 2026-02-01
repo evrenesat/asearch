@@ -1,6 +1,7 @@
 """Command-line interface for asearch."""
 
 import argparse
+import os
 import re
 from typing import Dict, List, Optional
 
@@ -94,6 +95,12 @@ def parse_args() -> argparse.Namespace:
         "--print-answer",
         dest="print_ids",
         help="Print the answer(s) for specific history IDs (comma-separated).",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output (prints config and LLM inputs).",
     )
     parser.add_argument("query", nargs="*", help="The query string")
     return parser.parse_args()
@@ -210,6 +217,63 @@ def handle_print_answer_implicit(args: argparse.Namespace) -> bool:
 def main() -> None:
     """Main entry point for the CLI."""
     args = parse_args()
+
+    if args.verbose:
+        print("\n=== CONFIGURATION ===")
+        print(f"Selected Model: {args.model}")
+        print(f"Deep Research: {args.deep_research}")
+        print(f"Deep Dive: {args.deep_dive}")
+        print(f"Force Search: {args.force_search}")
+        print("-" * 20)
+        from asearch.config import (
+            DEFAULT_MODEL,
+            LMSTUDIO,
+            SEARXNG_URL,
+            MAX_TURNS,
+            QUERY_SUMMARY_MAX_CHARS,
+            ANSWER_SUMMARY_MAX_CHARS,
+            SUMMARIZATION_MODEL,
+        )
+
+        print(f"DEFAULT_MODEL: {DEFAULT_MODEL}")
+        print(f"SUMMARIZATION_MODEL: {SUMMARIZATION_MODEL}")
+        print(f"LMSTUDIO: {LMSTUDIO}")
+        print(f"SEARXNG_URL: {SEARXNG_URL}")
+        print(f"MAX_TURNS: {MAX_TURNS}")
+        print(f"QUERY_SUMMARY_MAX_CHARS: {QUERY_SUMMARY_MAX_CHARS}")
+        print(f"ANSWER_SUMMARY_MAX_CHARS: {ANSWER_SUMMARY_MAX_CHARS}")
+        print("-" * 20)
+        print("MODELS Config:")
+        for m_alias, m_conf in MODELS.items():
+            print(f"  [{m_alias}]: {m_conf['id']}")
+            for k, v in m_conf.items():
+                if k == "id":
+                    continue
+
+                # Special handling for api_key_env
+                if k == "api_key_env":
+                    print(f"    {k}: {v}")
+                    # Check if env var is set
+                    env_val = os.environ.get(v)
+                    if env_val:
+                        masked = (
+                            env_val[:5] + "..." + env_val[-4:]
+                            if len(env_val) > 10
+                            else "***"
+                        )
+                        print(f"      [Status]: SET ({masked})")
+                    else:
+                        print(f"      [Status]: NOT SET")
+                    continue
+
+                if "key" in k.lower() and v and k != "api_key_env":
+                    # Mask key directly
+                    masked = v[:5] + "..." + v[-4:] if len(v) > 10 else "***"
+                    print(f"    {k}: {masked}")
+                else:
+                    print(f"    {k}: {v}")
+        print("=====================\n")
+
     init_db()
 
     # Handle History Request
@@ -244,7 +308,9 @@ def main() -> None:
     messages = build_messages(args, context_str)
     model_config = MODELS[args.model]
 
-    final_answer = run_conversation_loop(model_config, messages, args.summarize)
+    final_answer = run_conversation_loop(
+        model_config, messages, args.summarize, verbose=args.verbose
+    )
 
     # Save Interaction
     if final_answer:

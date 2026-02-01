@@ -9,8 +9,11 @@ from asearch.cli import (
     print_answers,
     handle_cleanup,
     handle_print_answer_implicit,
+    handle_print_answer_implicit,
     main,
 )
+from asearch.config import MODELS
+from asearch.llm import construct_system_prompt
 
 
 @pytest.fixture
@@ -179,6 +182,7 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
         all=False,
         print_ids=None,
         query=["test"],
+        verbose=False,
     )
     mock_run_loop.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
@@ -186,5 +190,64 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
     main()
 
     mock_init.assert_called_once()
-    mock_run_loop.assert_called_once()
+    mock_run_loop.assert_called_once_with(
+        MODELS["gf"],
+        [
+            {"role": "system", "content": construct_system_prompt(0, False, False)},
+            {"role": "user", "content": "test"},
+        ],
+        False,
+        verbose=False,
+    )
     mock_save.assert_called_once()
+
+
+@patch("asearch.cli.parse_args")
+@patch("asearch.cli.init_db")
+@patch("asearch.cli.run_conversation_loop")
+@patch("asearch.cli.generate_summaries")
+@patch("asearch.cli.save_interaction")
+@patch("asearch.cli.os.environ.get")
+def test_main_flow_verbose(
+    mock_env_get, mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse, capsys
+):
+    mock_env_get.return_value = "fake_key_123456789"
+    mock_parse.return_value = argparse.Namespace(
+        model="gf",
+        deep_research=0,
+        deep_dive=False,
+        history=None,
+        continue_ids=None,
+        full=False,
+        summarize=False,
+        force_search=False,
+        cleanup_db=None,
+        all=False,
+        print_ids=None,
+        query=["test"],
+        verbose=True,
+    )
+    mock_run_loop.return_value = "Final Answer"
+    mock_gen_sum.return_value = ("q_sum", "a_sum")
+
+    main()
+
+    captured = capsys.readouterr()
+    assert "=== CONFIGURATION ===" in captured.out
+    assert "Selected Model: gf" in captured.out
+    assert "DEFAULT_MODEL:" in captured.out
+    assert "[Status]: SET" in captured.out
+    # We can't strictly assert SET/NOT SET without knowing the env,
+    # but we can check if the code path printing [Status] is triggered if we mock os.environ.get
+    # For now, let's just ensure no crash.
+    # Actually, let's mock os.environ.get to ensure we see "SET" or "NOT SET"
+
+    mock_run_loop.assert_called_once_with(
+        MODELS["gf"],
+        [
+            {"role": "system", "content": construct_system_prompt(0, False, False)},
+            {"role": "user", "content": "test"},
+        ],
+        False,
+        verbose=True,
+    )
