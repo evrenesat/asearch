@@ -12,6 +12,7 @@
 - **Refactor**: Removed direct `LMSTUDIO` constant usage in favor of data-driven configuration.
 - **Test**: Verified new config schema with `pytest` and CLI execution (-v).
 - **Test**: Verified config generation, loading, and API key precedence. Ran regression tests (50 passed).
+- **Docs**: Added detailed explanatory comments to `src/asearch/config.toml` explaining all sections and individual configuration fields.
 
 ### Dependency Cleanup
 - Removed `liteLLM` dependency (simplified project, reduced bloat).
