@@ -3,40 +3,67 @@
 import os
 import tomllib
 from pathlib import Path
+import copy
 from typing import Dict, Any
 
 
+# Default Configuration Values
 # Default Configuration Values
 DEFAULT_CONFIG = {
     "general": {
         "db_path_env_var": "SEARXNG_HISTORY_DB_PATH",
         "query_summary_max_chars": 40,
         "answer_summary_max_chars": 200,
-        "lmstudio_url": "http://localhost:1234/v1/chat/completions",
         "searxng_url": "http://localhost:8888",
         "max_turns": 20,
         "default_model": "gf",
         "summarization_model": "lfm",
     },
+    "api": {
+        "gemini": {
+            "url": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
+            "api_key_env": "GOOGLE_API_KEY",
+        },
+        "lmstudio": {
+            "url": "http://localhost:1234/v1/chat/completions",
+            "api_key": "lm-studio",
+        },
+    },
     "models": {
         "q34t": {
             "id": "qwen/qwen3-4b-thinking-2507",
+            "api": "lmstudio",
             "max_chars": 4000,
             "context_size": 32000,
         },
-        "q34": {"id": "qwen/qwen3-4b-2507", "max_chars": 4000, "context_size": 32000},
-        "lfm": {"id": "liquid/lfm2.5-1.2b", "max_chars": 100000, "context_size": 32000},
-        "q8": {"id": "qwen/qwen3-8b", "max_chars": 4000, "context_size": 32000},
+        "q34": {
+            "id": "qwen/qwen3-4b-2507",
+            "api": "lmstudio",
+            "max_chars": 4000,
+            "context_size": 32000,
+        },
+        "lfm": {
+            "id": "liquid/lfm2.5-1.2b",
+            "api": "lmstudio",
+            "max_chars": 100000,
+            "context_size": 32000,
+        },
+        "q8": {
+            "id": "qwen/qwen3-8b",
+            "api": "lmstudio",
+            "max_chars": 4000,
+            "context_size": 32000,
+        },
         "q30": {
             "id": "qwen/qwen3-30b-a3b-2507",
+            "api": "lmstudio",
             "max_chars": 3000,
             "context_size": 32000,
         },
         "gf": {
             "id": "gemini-flash-latest",
+            "api": "gemini",
             "max_chars": 1000000,
-            "base_url": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
-            "api_key_env": "GOOGLE_API_KEY",
             "context_size": 1000000,
         },
     },
@@ -96,6 +123,15 @@ def _create_default_config(path: Path):
             toml_content.append(f"{k} = {v}")
 
     toml_content.append("")
+    for api_name, api_data in DEFAULT_CONFIG.get("api", {}).items():
+        toml_content.append(f"[api.{api_name}]")
+        for k, v in api_data.items():
+            if isinstance(v, str):
+                toml_content.append(f'{k} = "{v}"')
+            elif isinstance(v, int):
+                toml_content.append(f"{k} = {v}")
+        toml_content.append("")
+
     toml_content.append("[prompts]")
     prompts = DEFAULT_CONFIG["prompts"]
     for k, v in prompts.items():
@@ -117,6 +153,37 @@ def _create_default_config(path: Path):
         f.write("\n".join(toml_content))
 
 
+def _hydrate_models(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Hydrate model definitions with API details."""
+    api_defs = config.get("api", {})
+    models = config.get("models", {})
+
+    for model_data in models.values():
+        api_ref = model_data.get("api")
+        if api_ref and api_ref in api_defs:
+            api_config = api_defs[api_ref]
+            # Copy relevant fields if not present in model
+            # Map 'url' from api to 'base_url' for the model if needed, or just keep it as url
+            # The LLM module likely looks for 'base_url'.
+            # Let's standardize on 'base_url' for the internal model config representation.
+
+            if "url" in api_config and "base_url" not in model_data:
+                model_data["base_url"] = api_config["url"]
+            elif (
+                "url" in api_config
+            ):  # If model has base_url, do nothing? or overwrite?
+                # if both exist, model config should probably win, but here we are filling in defaults.
+                pass
+
+            if "api_key" in api_config and "api_key" not in model_data:
+                model_data["api_key"] = api_config["api_key"]
+
+            if "api_key_env" in api_config and "api_key_env" not in model_data:
+                model_data["api_key_env"] = api_config["api_key_env"]
+
+    return config
+
+
 def load_config() -> Dict[str, Any]:
     """Load configuration from TOML file, falling back to defaults."""
     config_path = _get_config_dir() / "config.toml"
@@ -124,9 +191,7 @@ def load_config() -> Dict[str, Any]:
     if not config_path.exists():
         try:
             _create_default_config(config_path)
-        except Exception as e:
-            # If we can't write, just return defaults but warn?
-            # For now, simplistic approach: just use defaults if write fails.
+        except Exception:
             pass
 
     if config_path.exists():
@@ -134,11 +199,8 @@ def load_config() -> Dict[str, Any]:
             with open(config_path, "rb") as f:
                 user_config = tomllib.load(f)
 
-            # Merge user config with defaults (deep merge for models?)
-            # For simplicity, we assume user config has the right structure if present.
-            # But better to start with DEFAULT and update.
+            # Recursive merge with default config
 
-            # Simple recursive merge helper
             def merge(base, update):
                 for k, v in update.items():
                     if k in base and isinstance(base[k], dict) and isinstance(v, dict):
@@ -146,19 +208,17 @@ def load_config() -> Dict[str, Any]:
                     else:
                         base[k] = v
 
-            # copy default config first
-            # We need a deep copy of DEFAULT_CONFIG
-            import copy
-
             final_config = copy.deepcopy(DEFAULT_CONFIG)
             merge(final_config, user_config)
-            return final_config
+
+            # Post-process to hydrate models
+            return _hydrate_models(final_config)
 
         except Exception as e:
             print(f"Warning: Failed to load config from {config_path}: {e}")
-            return DEFAULT_CONFIG
+            return _hydrate_models(copy.deepcopy(DEFAULT_CONFIG))
 
-    return DEFAULT_CONFIG
+    return _hydrate_models(copy.deepcopy(DEFAULT_CONFIG))
 
 
 # --- Initialize Configuration ---
@@ -170,7 +230,7 @@ _CONFIG = load_config()
 _gen = _CONFIG["general"]
 QUERY_SUMMARY_MAX_CHARS = _gen["query_summary_max_chars"]
 ANSWER_SUMMARY_MAX_CHARS = _gen["answer_summary_max_chars"]
-LMSTUDIO = _gen["lmstudio_url"]
+ANSWER_SUMMARY_MAX_CHARS = _gen["answer_summary_max_chars"]
 SEARXNG_URL = _gen["searxng_url"]
 MAX_TURNS = _gen["max_turns"]
 DEFAULT_MODEL = _gen["default_model"]

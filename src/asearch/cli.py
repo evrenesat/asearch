@@ -227,7 +227,6 @@ def main() -> None:
         print("-" * 20)
         from asearch.config import (
             DEFAULT_MODEL,
-            LMSTUDIO,
             SEARXNG_URL,
             MAX_TURNS,
             QUERY_SUMMARY_MAX_CHARS,
@@ -236,9 +235,6 @@ def main() -> None:
         )
 
         print(f"DEFAULT_MODEL: {DEFAULT_MODEL}")
-        print(f"SUMMARIZATION_MODEL: {SUMMARIZATION_MODEL}")
-        print(f"LMSTUDIO: {LMSTUDIO}")
-        print(f"SEARXNG_URL: {SEARXNG_URL}")
         print(f"MAX_TURNS: {MAX_TURNS}")
         print(f"QUERY_SUMMARY_MAX_CHARS: {QUERY_SUMMARY_MAX_CHARS}")
         print(f"ANSWER_SUMMARY_MAX_CHARS: {ANSWER_SUMMARY_MAX_CHARS}")

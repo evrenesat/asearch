@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from asearch.config import (
-    LMSTUDIO,
     MAX_TURNS,
     MODELS,
     TOOLS,
@@ -64,7 +63,7 @@ def get_llm_msg(
     # Find the model config based on model_id
     model_config = next((m for m in MODELS.values() if m["id"] == model_id), None)
 
-    url = LMSTUDIO
+    url = ""
     headers = {"Content-Type": "application/json"}
 
     if model_config and "base_url" in model_config:

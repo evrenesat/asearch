@@ -7,6 +7,10 @@
 - **Feat**: Added support for defining API keys directly in `config.toml` or via environment variables (customizable names).
 - **Refactor**: Removed `python-dotenv` dependency and `.env` file loading logic.
 - **Refactor**: Relocated default history database to `~/.config/asearch/history.db`. Path is configurable via `config.toml` or environment variable.
+- **Refactor**: Decoupled API and Model definitions in `config.toml`. Now supports `[api.name]` sections used by `[models.name]`.
+- **Feat**: Updated `config.py` to hydrate model configurations with API details (URLs, keys) automatically.
+- **Refactor**: Removed direct `LMSTUDIO` constant usage in favor of data-driven configuration.
+- **Test**: Verified new config schema with `pytest` and CLI execution (-v).
 - **Test**: Verified config generation, loading, and API key precedence. Ran regression tests (50 passed).
 
 ### Dependency Cleanup
