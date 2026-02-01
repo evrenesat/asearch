@@ -7,7 +7,7 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 ## Key Features
 
 - **Multi-Model Support**: Easily define and switch between various LLMs and providers that supports OpenAI compatible API.
-- **Tool-Calling Integration**: Models can autonomously perform web searches, fetch URL content, and get current date/time to provide accurate, up-to-date answers.
+- **Tool-Calling Integration**: Models can autonomously perform web searches (via SearXNG or Serper API), fetch URL content, and get current date/time to provide accurate, up-to-date answers.
 - **Intelligent Content Fetching**: Automatically strips HTML noise (scripts, styles) to provide clean text context to the models.
 - **Conversation History**: Maintains a local SQLite database of your queries and answers, allowing for context-aware follow-up questions.
 - **Deep Research Mode**: Automatically performs multiple searches to provide comprehensive analysis of complex topics.
@@ -18,10 +18,12 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 
 1. **User Query**: You provide a query to the `ask` command.
 2. **Model Selection**: aSearch initializes the selected LLM based on your configuration.
-3. **Tool Loop**: The LLM analyzes your query. If it needs real-world data, it calls integrated tools (like `web_search` via SearXNG).
+3. **Tool Loop**: The LLM analyzes your query. If it needs real-world data, it calls integrated tools (like `web_search`).
 4. **Context Synthesis**: aSearch fetches the data, cleans it, and feeds it back to the LLM. This process can repeat for up to 15 turns for complex research.
 5. **Final Answer**: The LLM synthesizes all gathered information into a concise, formatted response.
 6. **Persistence**: The interaction is saved to your local history for future reference.
+
+
 
 ## Installation
 
@@ -37,38 +39,7 @@ pip install -e .
 
 ## Usage
 
-```bash
-➜  ~ ask -h
-usage: ask [-h] [-m {q34t,q34,lfm,q8,q30,gf}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-f] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-pa PRINT_IDS] [-p] [-v] [query ...]
-
-Tool-calling CLI with model selection.
-
-positional arguments:
-  query                 The query string
-
-options:
-  -h, --help            show this help message and exit
-  -m, --model {q34t,q34,lfm,q8,q30,gf}
-                        Select the model alias
-  -d, --deep-research [DEEP_RESEARCH]
-                        Enable deep research mode (optional: specify min number of queries, default 5)
-  -dd, --deep-dive      Enable deep dive mode (extracts links and encourages reading more pages from same domain)
-  -H, --history [HISTORY]
-                        Show last N queries (default 10) and exit.
-  -c, --continue-chat CONTINUE_IDS
-                        Continue conversation with context from specific history IDs (comma-separated, e.g. '1,2').
-  -f, --full            Use full content of previous answers for context instead of summaries.
-  -s, --summarize       Enable summarize mode (summarizes the content of the URL)
-  -fs, --force-search   Force the model to use web search (default: False).
-  --cleanup-db [CLEANUP_DB]
-                        Delete history records. usage: --cleanup-db [ID|ID-ID|ID,ID] or --cleanup-db --all
-  --all                 Used with --cleanup-db to delete ALL history.
-  -pa, --print-answer PRINT_IDS
-                        Print the answer(s) for specific history IDs (comma-separated).
-  -p, --prompts         List all configured user prompts.
-  -v, --verbose         Enable verbose output (prints config and LLM inputs).
-
-
+```
 
 # Basic query
 ask what is the weather in Berlin
@@ -112,30 +83,62 @@ The weather in **Delft, South Holland, Netherlands** is currently **45°F and Cl
 
 Here is the forecast for today and the next couple of days:
 
-*   **Now (Current):** 44°F, Light Rain, wind SE 8 mph.
-*   **Tonight:** Low of **40°F**. Cloudy with periods of rain. Chance of rain is 75-80%. Winds ESE at 10 to 15 mph.
-*   **Monday (Tomorrow):** High of **43°F** / Low of **32°F**.
-    *   **Day:** Scattered rain showers early with overcast skies later. Chance of rain 40%. Winds E at 10 to 15 mph.
-    *   **Night:** Partly cloudy, low of 32°F. Winds E at 10 to 20 mph.
-*   **Tuesday:** High of **38°F** / Low of **38°F**.
-    *   Cloudy with periods of light rain. Chance of rain 60%. Winds E at 10 to 20 mph.
+...
 
 Query completed in 3.88 seconds
 
-# Deep research mode (multiple searches)
+➜  ~ ask -h
+usage: ask [-h] [-m {q34t,q34,lfm,q8,q30,gf}] [-d [DEEP_RESEARCH]] [-dd] [-H [HISTORY]] [-c CONTINUE_IDS] [-f] [-s] [-fs] [--cleanup-db [CLEANUP_DB]] [--all] [-pa PRINT_IDS] [-p] [-v] [query ...]
+
+Tool-calling CLI with model selection.
+
+positional arguments:
+  query                 The query string
+
+options:
+  -h, --help            show this help message and exit
+  -m, --model {q34t,q34,lfm,q8,q30,gf}
+                        Select the model alias
+  -d, --deep-research [DEEP_RESEARCH]
+                        Enable deep research mode (optional: specify min number of queries, default 5)
+  -dd, --deep-dive      Enable deep dive mode (extracts links and encourages reading more pages from same domain)
+  -H, --history [HISTORY]
+                        Show last N queries (default 10) and exit.
+  -c, --continue-chat CONTINUE_IDS
+                        Continue conversation with context from specific history IDs (comma-separated, e.g. '1,2').
+  -f, --full            Use full content of previous answers for context instead of summaries.
+  -s, --summarize       Enable summarize mode (summarizes the content of the URL)
+  -fs, --force-search   Force the model to use web search (default: False).
+  --cleanup-db [CLEANUP_DB]
+                        Delete history records. usage: --cleanup-db [ID|ID-ID|ID,ID] or --cleanup-db --all
+  --all                 Used with --cleanup-db to delete ALL history.
+  -pa, --print-answer PRINT_IDS
+                        Print the answer(s) for specific history IDs (comma-separated).
+  -p, --prompts         List all configured user prompts.
+  -v, --verbose         Enable verbose output (prints config and LLM inputs).
+
+
+```
+
+**Deep research mode** (encourages model to perform multiple searches)
+
 ask -d 5 comprehensive analysis of topic
 
-# Deep dive mode (follow links recursively)
+**Deep dive mode** (encourages model to read multiple pages from same domain)
+
 ask -dd https://example.com
 
-# Use a specific model
+**Use a specific model**
+
 ask -m gf what is quantum computing
 
-# Force web search
+**Force web search**
+
 ask -fs latest news on topic
 
 
-## Pre-configured model definitions
+**Pre-configured model definitions**
+
 
 - `gf` - Google Gemini Flash (default)
 - `lfm` - Liquid LFM 2.5
@@ -144,7 +147,9 @@ ask -fs latest news on topic
 - `q34` - Qwen3 4B
 - `q34t` - Qwen3 4B Thinking
 
-## Configuration
+## Configuration options
+[See default configuration](./src/asearch/config.toml)
+
 
 On first run, a default configuration file is created at `~/.config/asearch/config.toml`. You can edit this file to configure models, API keys, and other settings.
 

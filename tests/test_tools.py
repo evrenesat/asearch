@@ -141,3 +141,47 @@ def test_summarize_text(mock_get_msg):
 
 def test_summarize_text_empty():
     assert summarize_text("") == ""
+
+
+@patch("asearch.tools.SEARCH_PROVIDER", "serper")
+@patch("os.environ.get")
+@patch("requests.post")
+def test_execute_serper_search_success(mock_post, mock_env_get):
+    mock_env_get.return_value = "fake-key"
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "organic": [
+            {
+                "title": "Serper Result",
+                "link": "http://serper.com",
+                "snippet": "Serper content",
+            }
+        ]
+    }
+    mock_post.return_value = mock_response
+
+    from asearch.tools import _execute_serper_search
+
+    result = _execute_serper_search("query", count=1)
+
+    assert "results" in result
+    assert result["results"][0]["title"] == "Serper Result"
+    assert result["results"][0]["engine"] == "serper"
+
+
+@patch("asearch.tools.SEARCH_PROVIDER", "serper")
+@patch("asearch.tools._execute_serper_search")
+def test_execute_web_search_dispatch_serper(mock_serper):
+    from asearch.tools import execute_web_search
+
+    execute_web_search({"q": "test"})
+    mock_serper.assert_called_once()
+
+
+@patch("asearch.tools.SEARCH_PROVIDER", "searxng")
+@patch("asearch.tools._execute_searxng_search")
+def test_execute_web_search_dispatch_searxng(mock_searxng):
+    from asearch.tools import execute_web_search
+
+    execute_web_search({"q": "test"})
+    mock_searxng.assert_called_once()

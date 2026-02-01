@@ -1,12 +1,20 @@
 """Tool execution functions for web search and URL content retrieval."""
 
 import json
+import os
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List
 
-from asearch.config import SEARXNG_URL, MODELS, SUMMARIZATION_MODEL
+from asearch.config import (
+    SEARXNG_URL,
+    MODELS,
+    SUMMARIZATION_MODEL,
+    SEARCH_PROVIDER,
+    SERPER_API_URL,
+    SERPER_API_KEY_ENV,
+)
 from asearch.html import HTMLStripper, strip_tags, strip_think_tags
 
 
@@ -20,10 +28,8 @@ def reset_read_urls() -> None:
     read_urls = []
 
 
-def execute_web_search(args: Dict[str, Any]) -> Dict[str, Any]:
+def _execute_searxng_search(q: str, count: int) -> Dict[str, Any]:
     """Execute a web search using SearXNG."""
-    q = args.get("q", "")
-    count = args.get("count", 5)
     try:
         resp = requests.get(
             f"{SEARXNG_URL}/search",
@@ -44,7 +50,56 @@ def execute_web_search(args: Dict[str, Any]) -> Dict[str, Any]:
             )
         return {"results": results}
     except Exception as e:
-        return {"error": f"Search failed: {str(e)}"}
+        return {"error": f"SearXNG search failed: {str(e)}"}
+
+
+def _execute_serper_search(q: str, count: int) -> Dict[str, Any]:
+    """Execute a web search using Serper API."""
+    api_key = os.environ.get(SERPER_API_KEY_ENV)
+    if not api_key:
+        return {
+            "error": f"Serper API key not found in environment variable {SERPER_API_KEY_ENV}"
+        }
+
+    try:
+        headers = {
+            "X-API-KEY": api_key,
+            "Content-Type": "application/json",
+        }
+        payload = json.dumps({"q": q, "num": count})
+        resp = requests.post(
+            SERPER_API_URL,
+            headers=headers,
+            data=payload,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        results = []
+        # Support both 'organic' and 'knowledgeGraph' if present
+        for x in data.get("organic", [])[:count]:
+            results.append(
+                {
+                    "title": strip_tags(x.get("title", "")),
+                    "url": x.get("link"),
+                    "snippet": strip_tags(x.get("snippet", ""))[:400],
+                    "engine": "serper",
+                }
+            )
+        return {"results": results}
+    except Exception as e:
+        return {"error": f"Serper search failed: {str(e)}"}
+
+
+def execute_web_search(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a web search using the configured provider."""
+    q = args.get("q", "")
+    count = args.get("count", 5)
+
+    if SEARCH_PROVIDER == "serper":
+        return _execute_serper_search(q, count)
+    else:
+        return _execute_searxng_search(q, count)
 
 
 def summarize_text(text: str) -> str:

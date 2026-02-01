@@ -2,6 +2,11 @@
 
 ## 2026-02-01
 
+- **Feat**: Introduced **Serper API** search provider support.
+  - Added `search_provider`, `serper_api_url`, and `serper_api_key_env` to `config.toml`.
+  - Refactored `execute_web_search` in `tools.py` to dispatch between `SearXNG` and `Serper`.
+  - Added full documentation comments for new configuration options.
+- **Fix**: Resolved `AttributeError: 'Namespace' object has no attribute 'prompts'` in CLI tests caused by recent changes.
 - **Refactor**: Moved configuration to `~/.config/asearch/config.toml` (TOML format).
 - **Feat**: Added `ConfigLoader` to `src/asearch/config.py` to auto-generate default config on first run.
 - **Feat**: Added support for defining API keys directly in `config.toml` or via environment variables (customizable names).

@@ -111,6 +111,9 @@ SEARXNG_URL = _gen["searxng_url"]
 MAX_TURNS = _gen["max_turns"]
 DEFAULT_MODEL = _gen["default_model"]
 SUMMARIZATION_MODEL = _gen["summarization_model"]
+SEARCH_PROVIDER = _gen.get("search_provider", "searxng")
+SERPER_API_URL = _gen.get("serper_api_url", "https://google.serper.dev/search")
+SERPER_API_KEY_ENV = _gen.get("serper_api_key_env", "SERPER_API_KEY")
 
 # Database
 # DB Path logic:

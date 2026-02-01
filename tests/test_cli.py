@@ -30,6 +30,7 @@ def mock_args():
         cleanup_db=None,
         all=False,
         print_ids=None,
+        prompts=False,
         query=["test", "query"],
     )
 
@@ -230,6 +231,7 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
         cleanup_db=None,
         all=False,
         print_ids=None,
+        prompts=False,
         query=["test"],
         verbose=False,
     )
@@ -273,6 +275,7 @@ def test_main_flow_verbose(
         cleanup_db=None,
         all=False,
         print_ids=None,
+        prompts=False,
         query=["test"],
         verbose=True,
     )
