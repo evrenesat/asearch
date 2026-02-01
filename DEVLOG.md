@@ -2,6 +2,12 @@
 
 ## 2026-02-01
 
+- **Feat**: Made **User-Agent configurable** via `config.toml` under `[general]` section.
+  - Replaced hardcoded UA strings in `tools.py` with `USER_AGENT` constant.
+  - Introduced `llm_user_agent` for LLM requests in `llm.py`.
+  - Added support for loading both from configuration with sensible defaults.
+- **Fix**: Made `tests/test_cli.py` independent of local configuration by patching `DEFAULT_MODEL` and `MODELS`.
+
 - **Fix**: Added `User-Agent` header to all `requests` calls in `tools.py` to resolve **SearXNG 403 Forbidden** errors.
 - **Feat**: Introduced **custom user-defined tool support**.
   - Users can define tools in `config.toml` under `[tool.NAME]`.

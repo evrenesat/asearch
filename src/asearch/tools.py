@@ -16,6 +16,7 @@ from asearch.config import (
     SERPER_API_URL,
     SERPER_API_KEY_ENV,
     CUSTOM_TOOLS,
+    USER_AGENT,
 )
 from asearch.html import HTMLStripper, strip_tags, strip_think_tags
 
@@ -36,7 +37,7 @@ def _execute_searxng_search(q: str, count: int) -> Dict[str, Any]:
     base_url = SEARXNG_URL.rstrip("/")
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+            "User-Agent": USER_AGENT,
             "Accept": "application/json",
         }
         resp = requests.get(
@@ -148,9 +149,7 @@ def fetch_single_url(
     if url in read_urls:
         return {url: "Error: Already read this URL."}
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+        headers = {"User-Agent": USER_AGENT}
         resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
         content = strip_tags(resp.text)
@@ -203,9 +202,7 @@ def execute_get_url_details(args: Dict[str, Any], max_chars: int) -> Dict[str, A
         return {"error": "You have already read this URL."}
     read_urls.append(url)
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+        headers = {"User-Agent": USER_AGENT}
         resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
         s = HTMLStripper()

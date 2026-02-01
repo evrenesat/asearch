@@ -33,6 +33,13 @@ default_model = "gf"
 # Model used specifically for internal text summarization tasks.
 summarization_model = "lfm"
 
+# User-Agent string to be used for search and content retrieval requests.
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+
+# Specific User-Agent string for LLM API requests.
+# Some providers only accept specific user agents for certain subscriptions types.
+llm_user_agent = "asearch/1.0.0"
+
 # --- API Definitions ---
 # Define reusable API endpoints and authentication details here.
 # For each section [api.NAME]:
@@ -44,9 +51,30 @@ summarization_model = "lfm"
 url = "https://generativelanguage.googleapis.com/v1beta/chat/completions"
 api_key_env = "GOOGLE_API_KEY"
 
+
+[api.anthropic]
+url = "https://api.anthropic.com/v1/messages"
+api_key_env = "ANTHROPIC_API_KEY"
+
+
+[api.openai]
+url = "https://api.openai.com/v1/chat/completions"
+api_key_env = "OPENAI_API_KEY"
+
+
+[api.openrouter]
+url = "https://openrouter.ai/api/v1/chat/completions"
+api_key_env = "OPENROUTER_API_KEY"
+
+
 [api.lmstudio]
 url = "http://localhost:1234/v1/chat/completions"
 api_key = "lm-studio"
+
+
+[api.zai]
+url = "https://api.z.ai/api/paas/v4/chat/completions"
+api_key_env = "ZAI_API_KEY"
 
 
 # --- User Prompts (Shortcuts) ---
@@ -103,8 +131,30 @@ You are in DEEP DIVE mode. Follow these instructions:
 # Each section [models.NAME] configures a specific model:
 #   id: The exact model ID used by the API provider.
 #   api: Reference to a name defined in the [api] section.
-#   max_chars: Character limit for content fetched via get_url_content.
+#   max_chars: Character limit for content fetched via get_url_content. More than this will be truncated.
 #   context_size: Total context window size (tokens/chars approximation) for trimming history.
+
+# Note: max_chars is the context_size values of the following models are arbitrarily set for my own use.
+# Check model provider's documentation for the actual context size of the models.
+# Experiment with max_chars to find the optimal value for your use case (depending on your needs, and model/hardware capabilities)
+
+[models.gf]
+id = "gemini-flash-latest"
+api = "gemini"
+max_chars = 10000
+context_size = 1000000
+
+[models.glmair]
+id = "glm-4.5-air"
+api = "zai"
+max_chars = 4000
+context_size = 100000
+
+[models.glmflash]
+id = "glm-4.7-flash"
+api = "zai"
+max_chars = 4000
+context_size = 100000
 
 [models.q34t]
 id = "qwen/qwen3-4b-thinking-2507"
@@ -136,8 +186,3 @@ api = "lmstudio"
 max_chars = 3000
 context_size = 32000
 
-[models.gf]
-id = "gemini-flash-latest"
-api = "gemini"
-max_chars = 1000000
-context_size = 1000000

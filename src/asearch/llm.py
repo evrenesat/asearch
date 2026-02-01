@@ -20,6 +20,7 @@ from asearch.config import (
     QUERY_SUMMARY_MAX_CHARS,
     ANSWER_SUMMARY_MAX_CHARS,
     SUMMARIZATION_MODEL,
+    LLM_USER_AGENT,
 )
 from asearch.html import strip_think_tags
 from asearch.tools import dispatch_tool_call, reset_read_urls
@@ -64,7 +65,10 @@ def get_llm_msg(
     model_config = next((m for m in MODELS.values() if m["id"] == model_id), None)
 
     url = ""
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": LLM_USER_AGENT,
+    }
 
     if model_config and "base_url" in model_config:
         url = model_config["base_url"]

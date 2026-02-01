@@ -135,6 +135,11 @@ SUMMARIZATION_MODEL = _gen["summarization_model"]
 SEARCH_PROVIDER = _gen.get("search_provider", "searxng")
 SERPER_API_URL = _gen.get("serper_api_url", "https://google.serper.dev/search")
 SERPER_API_KEY_ENV = _gen.get("serper_api_key_env", "SERPER_API_KEY")
+USER_AGENT = _gen.get(
+    "user_agent",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+)
+LLM_USER_AGENT = _gen.get("llm_user_agent", USER_AGENT)
 
 # Database
 # DB Path logic:
