@@ -1,7 +1,7 @@
 import pytest
 import argparse
 from unittest.mock import patch, MagicMock, ANY
-from asearch.cli import (
+from asky.cli import (
     parse_args,
     show_history,
     load_context,
@@ -12,8 +12,8 @@ from asearch.cli import (
     handle_print_answer_implicit,
     main,
 )
-from asearch.config import MODELS
-from asearch.llm import construct_system_prompt
+from asky.config import MODELS
+from asky.llm import construct_system_prompt
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ def mock_args():
 
 
 def test_parse_args_defaults():
-    with patch("asearch.cli.DEFAULT_MODEL", "gf"):
-        with patch("sys.argv", ["asearch", "query"]):
+    with patch("asky.cli.DEFAULT_MODEL", "gf"):
+        with patch("sys.argv", ["asky", "query"]):
             args = parse_args()
             assert args.query == ["query"]
             assert args.model == "gf"
@@ -48,7 +48,7 @@ def test_parse_args_options():
     with patch(
         "sys.argv",
         [
-            "asearch",
+            "asky",
             "-m",
             "q34",
             "-d",
@@ -72,7 +72,7 @@ def test_parse_args_options():
         assert args.force_search is True
 
 
-@patch("asearch.cli.get_history")
+@patch("asky.cli.get_history")
 def test_show_history(mock_get_history, capsys):
     mock_get_history.return_value = [
         (1, "ts", "query1", "summary1", "ans_sum1", "model")
@@ -85,7 +85,7 @@ def test_show_history(mock_get_history, capsys):
     mock_get_history.assert_called_with(5)
 
 
-@patch("asearch.cli.get_interaction_context")
+@patch("asky.cli.get_interaction_context")
 def test_load_context_success(mock_get_context):
     mock_get_context.return_value = "Context Content"
     result = load_context("1,2", True)
@@ -93,7 +93,7 @@ def test_load_context_success(mock_get_context):
     mock_get_context.assert_called_with([1, 2], full=False)
 
 
-@patch("asearch.cli.get_interaction_context")
+@patch("asky.cli.get_interaction_context")
 def test_load_context_invalid(mock_get_context, capsys):
     result = load_context("1,a", False)
     assert result is None
@@ -101,8 +101,8 @@ def test_load_context_invalid(mock_get_context, capsys):
     assert "Error: Invalid format" in captured.out
 
 
-@patch("asearch.cli.get_history")
-@patch("asearch.cli.get_interaction_context")
+@patch("asky.cli.get_history")
+@patch("asky.cli.get_interaction_context")
 def test_load_context_relative_success(mock_get_context, mock_get_history):
     # Mock history: ID 5 is most recent (~1), ID 4 is ~2
     mock_get_history.return_value = [
@@ -123,8 +123,8 @@ def test_load_context_relative_success(mock_get_context, mock_get_history):
     mock_get_context.assert_called_with([4], full=True)
 
 
-@patch("asearch.cli.get_history")
-@patch("asearch.cli.get_interaction_context")
+@patch("asky.cli.get_history")
+@patch("asky.cli.get_interaction_context")
 def test_load_context_mixed(mock_get_context, mock_get_history):
     # Mock history
     mock_get_history.return_value = [
@@ -140,7 +140,7 @@ def test_load_context_mixed(mock_get_context, mock_get_history):
     assert set(call_args) == {10, 123}
 
 
-@patch("asearch.cli.get_history")
+@patch("asky.cli.get_history")
 def test_load_context_relative_out_of_bounds(mock_get_history, capsys):
     mock_get_history.return_value = [(1, "ts", "q", "s", "a", "m")]  # only 1 record
 
@@ -166,7 +166,7 @@ def test_build_messages_with_context(mock_args):
     assert "Previous Context" in messages[1]["content"]
 
 
-@patch("asearch.cli.get_interaction_context")
+@patch("asky.cli.get_interaction_context")
 def test_print_answers(mock_get_context, capsys):
     mock_get_context.return_value = "Answer Content"
     print_answers("1,2", False)
@@ -175,7 +175,7 @@ def test_print_answers(mock_get_context, capsys):
     mock_get_context.assert_called_with([1, 2], full=True)
 
 
-@patch("asearch.cli.cleanup_db")
+@patch("asky.cli.cleanup_db")
 def test_handle_cleanup(mock_cleanup):
     args = MagicMock()
     args.cleanup_db = "1,2"
@@ -185,7 +185,7 @@ def test_handle_cleanup(mock_cleanup):
     mock_cleanup.assert_called_with("1,2")
 
 
-@patch("asearch.cli.cleanup_db")
+@patch("asky.cli.cleanup_db")
 def test_handle_cleanup_all(mock_cleanup):
     args = MagicMock()
     args.cleanup_db = None
@@ -195,7 +195,7 @@ def test_handle_cleanup_all(mock_cleanup):
     mock_cleanup.assert_called_with(None, delete_all=True)
 
 
-@patch("asearch.cli.print_answers")
+@patch("asky.cli.print_answers")
 def test_handle_print_answer_implicit(mock_print_answers):
     args = MagicMock()
     args.query = ["1,", "2"]
@@ -211,12 +211,15 @@ def test_handle_print_answer_implicit_fail():
     assert handle_print_answer_implicit(args) is False
 
 
-@patch("asearch.cli.parse_args")
-@patch("asearch.cli.init_db")
-@patch("asearch.cli.run_conversation_loop")
-@patch("asearch.cli.generate_summaries")
-@patch("asearch.cli.save_interaction")
-def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse):
+@patch("asky.cli.parse_args")
+@patch("asky.cli.init_db")
+@patch("asky.cli.get_db_record_count")
+@patch("asky.cli.run_conversation_loop")
+@patch("asky.cli.generate_summaries")
+@patch("asky.cli.save_interaction")
+def test_main_flow(
+    mock_save, mock_gen_sum, mock_run_loop, mock_db_count, mock_init, mock_parse
+):
     mock_parse.return_value = argparse.Namespace(
         model="gf",
         deep_research=0,
@@ -236,7 +239,7 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
     with patch(
-        "asearch.cli.MODELS",
+        "asky.cli.MODELS",
         {"gf": {"id": "gemini-flash-latest"}, "lfm": {"id": "llama-fallback"}},
     ):
         main()
@@ -256,14 +259,22 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
     mock_save.assert_called_once()
 
 
-@patch("asearch.cli.parse_args")
-@patch("asearch.cli.init_db")
-@patch("asearch.cli.run_conversation_loop")
-@patch("asearch.cli.generate_summaries")
-@patch("asearch.cli.save_interaction")
-@patch("asearch.cli.os.environ.get")
+@patch("asky.cli.parse_args")
+@patch("asky.cli.init_db")
+@patch("asky.cli.get_db_record_count")
+@patch("asky.cli.run_conversation_loop")
+@patch("asky.cli.generate_summaries")
+@patch("asky.cli.save_interaction")
+@patch("asky.cli.os.environ.get")
 def test_main_flow_verbose(
-    mock_env_get, mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse, capsys
+    mock_env_get,
+    mock_save,
+    mock_gen_sum,
+    mock_run_loop,
+    mock_db_count,
+    mock_init,
+    mock_parse,
+    capsys,
 ):
     mock_env_get.return_value = "fake_key_123456789"
     mock_parse.return_value = argparse.Namespace(
@@ -285,7 +296,7 @@ def test_main_flow_verbose(
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
     with patch(
-        "asearch.cli.MODELS",
+        "asky.cli.MODELS",
         {"gf": {"id": "gemini-flash-latest"}, "lfm": {"id": "llama-fallback"}},
     ):
         main()

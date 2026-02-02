@@ -3,7 +3,7 @@ import sqlite3
 import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from asearch.storage import (
+from asky.storage import (
     init_db,
     save_interaction,
     get_history,
@@ -22,7 +22,7 @@ def temp_db_path(tmp_path):
 @pytest.fixture
 def mock_db_path(temp_db_path):
     # Mock the DB_PATH constant in storage module
-    with patch("asearch.storage.DB_PATH", temp_db_path):
+    with patch("asky.storage.DB_PATH", temp_db_path):
         yield temp_db_path
 
 

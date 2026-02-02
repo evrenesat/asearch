@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from asearch.tools import _execute_custom_tool, dispatch_tool_call
+from asky.tools import _execute_custom_tool, dispatch_tool_call
 
 
 @pytest.fixture
 def mock_custom_tools():
-    with patch("asearch.tools.CUSTOM_TOOLS") as mock:
+    with patch("asky.tools.CUSTOM_TOOLS") as mock:
         mock.get.side_effect = lambda name: {
             "list_dir": {
                 "command": "ls {path}",

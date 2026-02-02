@@ -1,12 +1,12 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from asearch.cli import expand_query_text
+from asky.cli import expand_query_text
 
 
 @pytest.fixture
 def mock_prompts():
     with patch(
-        "asearch.cli.USER_PROMPTS", {"ex": "Explain this:", "sum": "Summarize /cp"}
+        "asky.cli.USER_PROMPTS", {"ex": "Explain this:", "sum": "Summarize /cp"}
     ):
         yield
 

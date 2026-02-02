@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from asearch.tools import (
+from asky.tools import (
     execute_web_search,
     fetch_single_url,
     execute_get_url_content,
@@ -32,7 +32,7 @@ def reset_urls():
     reset_read_urls()
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "searxng")
+@patch("asky.tools.SEARCH_PROVIDER", "searxng")
 def test_execute_web_search_success(mock_requests_get):
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -55,7 +55,7 @@ def test_execute_web_search_success(mock_requests_get):
     assert result["results"][0]["title"] == "Test Title"
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "searxng")
+@patch("asky.tools.SEARCH_PROVIDER", "searxng")
 def test_execute_web_search_failure(mock_requests_get):
     mock_requests_get.side_effect = Exception("Search failed")
     result = execute_web_search({"q": "fail"})
@@ -129,7 +129,7 @@ def test_execute_get_url_details_failure_no_block(mock_requests_get, reset_urls)
     assert result2["content"] == "Success"
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "searxng")
+@patch("asky.tools.SEARCH_PROVIDER", "searxng")
 def test_dispatch_tool_call(mock_requests_get, reset_urls):
     # Mock web search dispatch
     mock_response = MagicMock()
@@ -149,7 +149,7 @@ def test_execute_get_date_time():
     assert "T" in result["date_time"]  # Basic ISO format check
 
 
-@patch("asearch.llm.get_llm_msg")
+@patch("asky.llm.get_llm_msg")
 def test_summarize_text(mock_get_msg):
     # Mock LLM response
     mock_get_msg.return_value = {"content": "Buffered Summary"}
@@ -160,10 +160,10 @@ def test_summarize_text(mock_get_msg):
 
     # Verify strict mocking of inner import
     # Note: summarize_text imports get_llm_msg inside the function.
-    # unittest.mock.patch usually handles this if we patch 'asearch.llm.get_llm_msg'
+    # unittest.mock.patch usually handles this if we patch 'asky.llm.get_llm_msg'
     # BEFORE summarize_text imports it?
-    # summarize_text does `from asearch.llm import get_llm_msg` INSIDE.
-    # So we need to patch `asearch.llm.get_llm_msg` globally, which `patch` should do.
+    # summarize_text does `from asky.llm import get_llm_msg` INSIDE.
+    # So we need to patch `asky.llm.get_llm_msg` globally, which `patch` should do.
 
     args, kwargs = mock_get_msg.call_args
     # First arg is model_id, checks config
@@ -174,7 +174,7 @@ def test_summarize_text_empty():
     assert summarize_text("") == ""
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "serper")
+@patch("asky.tools.SEARCH_PROVIDER", "serper")
 @patch("os.environ.get")
 @patch("requests.post")
 def test_execute_serper_search_success(mock_post, mock_env_get):
@@ -191,7 +191,7 @@ def test_execute_serper_search_success(mock_post, mock_env_get):
     }
     mock_post.return_value = mock_response
 
-    from asearch.tools import _execute_serper_search
+    from asky.tools import _execute_serper_search
 
     result = _execute_serper_search("query", count=1)
 
@@ -200,26 +200,26 @@ def test_execute_serper_search_success(mock_post, mock_env_get):
     assert result["results"][0]["engine"] == "serper"
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "serper")
-@patch("asearch.tools._execute_serper_search")
+@patch("asky.tools.SEARCH_PROVIDER", "serper")
+@patch("asky.tools._execute_serper_search")
 def test_execute_web_search_dispatch_serper(mock_serper):
-    from asearch.tools import execute_web_search
+    from asky.tools import execute_web_search
 
     execute_web_search({"q": "test"})
     mock_serper.assert_called_once()
 
 
-@patch("asearch.tools.SEARCH_PROVIDER", "searxng")
-@patch("asearch.tools._execute_searxng_search")
+@patch("asky.tools.SEARCH_PROVIDER", "searxng")
+@patch("asky.tools._execute_searxng_search")
 def test_execute_web_search_dispatch_searxng(mock_searxng):
-    from asearch.tools import execute_web_search
+    from asky.tools import execute_web_search
 
     execute_web_search({"q": "test"})
     mock_searxng.assert_called_once()
 
 
-@patch("asearch.tools.time.sleep")
-@patch("asearch.tools.fetch_single_url")
+@patch("asky.tools.time.sleep")
+@patch("asky.tools.fetch_single_url")
 def test_execute_get_url_content_batch_summarize_delay(
     mock_fetch, mock_sleep, reset_urls
 ):

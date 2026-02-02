@@ -2,7 +2,7 @@ import pytest
 import json
 import requests
 from unittest.mock import patch, MagicMock
-from asearch.llm import (
+from asky.llm import (
     parse_textual_tool_call,
     construct_system_prompt,
     extract_calls,
@@ -76,7 +76,7 @@ def test_extract_calls_textual_fallback():
     assert calls[0]["id"] == "textual_call_1"
 
 
-@patch("asearch.llm.requests.post")
+@patch("asky.llm.requests.post")
 def test_get_llm_msg_success(mock_post):
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -88,7 +88,7 @@ def test_get_llm_msg_success(mock_post):
     assert msg["content"] == "Hello"
 
 
-@patch("asearch.llm.requests.post")
+@patch("asky.llm.requests.post")
 def test_get_llm_msg_verbose(mock_post, capsys):
     mock_response = MagicMock()
     mock_response.json.return_value = {
@@ -103,7 +103,7 @@ def test_get_llm_msg_verbose(mock_post, capsys):
     assert "Hi" in captured.out
 
 
-@patch("asearch.llm.requests.post")
+@patch("asky.llm.requests.post")
 def test_get_llm_msg_rate_limit_retry(mock_post):
     # First call returns 429, second returns success
     response_429 = MagicMock()
@@ -124,14 +124,14 @@ def test_get_llm_msg_rate_limit_retry(mock_post):
     mock_post.side_effect = [error_429, response_200]
 
     # We need to mock time.sleep to avoid waiting in tests
-    with patch("asearch.llm.time.sleep"):
+    with patch("asky.llm.time.sleep"):
         msg = get_llm_msg("q34", [])
         assert msg["content"] == "Success"
 
     assert mock_post.call_count == 2
 
 
-@patch("asearch.llm.requests.post")
+@patch("asky.llm.requests.post")
 def test_get_llm_msg_retry_after(mock_post):
     # Test that Retry-After header is respected
     response_429 = MagicMock()
@@ -146,14 +146,14 @@ def test_get_llm_msg_retry_after(mock_post):
 
     mock_post.side_effect = [error_429, response_200]
 
-    with patch("asearch.llm.time.sleep") as mock_sleep:
+    with patch("asky.llm.time.sleep") as mock_sleep:
         msg = get_llm_msg("q34", [])
         assert msg["content"] == "Success"
         mock_sleep.assert_called_with(5)
 
 
-@patch("asearch.llm.get_llm_msg")
-@patch("asearch.llm.dispatch_tool_call")
+@patch("asky.llm.get_llm_msg")
+@patch("asky.llm.dispatch_tool_call")
 def test_run_conversation_loop_basic(mock_dispatch, mock_get_msg):
     # Mock LLM sequence:
     # 1. Tool call (web search)
@@ -192,7 +192,7 @@ def test_run_conversation_loop_basic(mock_dispatch, mock_get_msg):
     assert messages[2]["tool_call_id"] == "call_1"
 
 
-@patch("asearch.llm.get_llm_msg")
+@patch("asky.llm.get_llm_msg")
 def test_generate_summaries(mock_get_msg):
     # Mock responses for query summary and answer summary
     # 1. Query summary
@@ -211,7 +211,7 @@ def test_generate_summaries(mock_get_msg):
     assert mock_get_msg.call_count == 2
 
 
-@patch("asearch.llm.get_llm_msg")
+@patch("asky.llm.get_llm_msg")
 def test_generate_summaries_short_query(mock_get_msg):
     # If query is short, it shouldn't call LLM for query summary
     mock_get_msg.return_value = {"content": "Answer summary"}

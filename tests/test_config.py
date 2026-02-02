@@ -1,4 +1,4 @@
-from asearch.config import MODELS, TOOLS, SYSTEM_PROMPT
+from asky.config import MODELS, TOOLS, SYSTEM_PROMPT
 
 
 def test_models_config():
@@ -25,7 +25,7 @@ def test_system_prompt_params():
 
 
 def test_default_context_size():
-    from asearch.config import DEFAULT_CONTEXT_SIZE
+    from asky.config import DEFAULT_CONTEXT_SIZE
 
     assert isinstance(DEFAULT_CONTEXT_SIZE, int)
     assert DEFAULT_CONTEXT_SIZE > 0

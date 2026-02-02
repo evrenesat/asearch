@@ -1,5 +1,5 @@
 import pytest
-from asearch.html import HTMLStripper, strip_tags, strip_think_tags
+from asky.html import HTMLStripper, strip_tags, strip_think_tags
 
 
 def test_html_stripper_basic():

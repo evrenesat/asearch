@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "asearch"
+name = "asky"
 version = "0.1.6"
 description = "AI-powered web search CLI with LLM tool-calling capabilities"
 readme = "README.md"
@@ -16,11 +16,11 @@ dependencies = [
 ]
 
 [project.scripts]
-ask = "asearch.cli:main"
-asearch = "asearch.cli:main"
+ask = "asky.cli:main"
+asky = "asky.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/asearch"]
+packages = ["src/asky"]
 
 [dependency-groups]
 dev = [

@@ -1,8 +1,9 @@
-# aSearch
+# asky
+![asky icon](assets/asearch_icon.png)
 
 AI-powered web search CLI with LLM tool-calling capabilities.
 
-aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interface that brings AI-powered search and research capabilities directly to your terminal. It LLMs and tools to synthesize answers from the web.
+asky (can be invoked as `asky` or `ask`) is a powerful command-line interface that brings AI-powered search and research capabilities directly to your terminal. It LLMs and tools to synthesize answers from the web.
 
 ## Key Features
 
@@ -19,9 +20,9 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 ## How it Works
 
 1. **User Query**: You provide a query to the `ask` command.
-2. **Model Selection**: aSearch initializes the selected LLM based on your configuration.
+2. **Model Selection**: asky initializes the selected LLM based on your configuration.
 3. **Tool Loop**: The LLM analyzes your query. If it needs real-world data, it calls integrated tools (like `web_search`).
-4. **Context Synthesis**: aSearch fetches the data, cleans it, and feeds it back to the LLM. This process can repeat for up to 15 turns for complex research.
+4. **Context Synthesis**: asky fetches the data, cleans it, and feeds it back to the LLM. This process can repeat for up to 15 turns for complex research.
 5. **Final Answer**: The LLM synthesizes all gathered information into a concise, formatted response.
 6. **Persistence**: The interaction is saved to your local history for future reference.
 
@@ -29,7 +30,7 @@ aSearch (can be invoked as `ask` or `asearch`) is a powerful command-line interf
 ## Installation
 
 ```bash
-pip install asearch
+pip install asky
 ```
 
 Or install from source:
@@ -181,7 +182,7 @@ default = "."
 ```
 
 > [!CAUTION]
-> **Security Risk**: Custom tools execute commands using your system shell. While aSearch attempts to quote arguments safely, exposing powerful CLI tools to an LLM can be risky. Use this feature with caution.
+> **Security Risk**: Custom tools execute commands using your system shell. While asky attempts to quote arguments safely, exposing powerful CLI tools to an LLM can be risky. Use this feature with caution.
 
 ### How it works:
 - **Placeholders**: Use `{param_name}` in the `command` string to inject arguments. If no placeholders are found, arguments are appended to the command.
@@ -196,10 +197,10 @@ default = "."
 > **Optional Parameters**: If you define a parameter with a `default` value in `config.toml`, it will be automatically injected into your `command` if the LLM omits it.
 
 ## Configuration options
-[See default configuration](./src/asearch/config.toml)
+[See default configuration](./src/asky/config.toml)
 
 
-On first run, a default configuration file is created at `~/.config/asearch/config.toml`. You can edit this file to configure models, API keys, and other settings.
+On first run, a default configuration file is created at `~/.config/asky/config.toml`. You can edit this file to configure models, API keys, and other settings.
 
 ### API Keys
 You can set API keys in two ways:
@@ -227,7 +228,7 @@ ask -v
 
 ## Web Search
 
-aSearch works best with a web search tool. You can use SearXNG or Serper API. 
+asky works best with a web search tool. You can use SearXNG or Serper API. 
 
 ### Serper API
 Serper is a paid service, but gives 2500 requests for free. 

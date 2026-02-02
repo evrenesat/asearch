@@ -2,7 +2,16 @@
 
 ## 2026-02-02
 
+- **Fix**: Resolved **database bootstrapping failure** on first run.
+  - The CLI was attempting to count database records for the banner before the database was initialized.
+  - Moved `init_db()` to the beginning of `main()` in `cli.py`.
+  - Updated `tests/test_cli.py` to mock `get_db_record_count` in main flow tests to align with mocked `init_db`.
+
+## 2026-02-02
+
 - **Feat**: Enhanced CLI with a **shiny banner**.
+  - Renamed project from "asearch" to "asky".
+  - Added a cute icon.
   - Added `get_banner` function to `banner.py` using `rich`.
   - Integrated the banner into `cli.py` to show model details, summarizer details, search backend, and context limits in a rounded rectangle.
   - **Expansion**: Reorganized the banner into a two-column layout to include **Default Model**, **Max Turns**, and **Database Record Count**.
@@ -108,17 +117,17 @@
   - Refactored `execute_web_search` in `tools.py` to dispatch between `SearXNG` and `Serper`.
   - Added full documentation comments for new configuration options.
 - **Fix**: Resolved `AttributeError: 'Namespace' object has no attribute 'prompts'` in CLI tests caused by recent changes.
-- **Refactor**: Moved configuration to `~/.config/asearch/config.toml` (TOML format).
-- **Feat**: Added `ConfigLoader` to `src/asearch/config.py` to auto-generate default config on first run.
+- **Refactor**: Moved configuration to `~/.config/asky/config.toml` (TOML format).
+- **Feat**: Added `ConfigLoader` to `src/asky/config.py` to auto-generate default config on first run.
 - **Feat**: Added support for defining API keys directly in `config.toml` or via environment variables (customizable names).
 - **Refactor**: Removed `python-dotenv` dependency and `.env` file loading logic.
-- **Refactor**: Relocated default history database to `~/.config/asearch/history.db`. Path is configurable via `config.toml` or environment variable.
+- **Refactor**: Relocated default history database to `~/.config/asky/history.db`. Path is configurable via `config.toml` or environment variable.
 - **Refactor**: Decoupled API and Model definitions in `config.toml`. Now supports `[api.name]` sections used by `[models.name]`.
 - **Feat**: Updated `config.py` to hydrate model configurations with API details (URLs, keys) automatically.
 - **Refactor**: Removed direct `LMSTUDIO` constant usage in favor of data-driven configuration.
 - **Test**: Verified new config schema with `pytest` and CLI execution (-v).
 - **Test**: Verified config generation, loading, and API key precedence. Ran regression tests (50 passed).
-- **Docs**: Added detailed explanatory comments to `src/asearch/config.toml` explaining all sections and individual configuration fields.
+- **Docs**: Added detailed explanatory comments to `src/asky/config.toml` explaining all sections and individual configuration fields.
 
 ### Dependency Cleanup
 - Removed `liteLLM` dependency (simplified project, reduced bloat).
@@ -221,7 +230,7 @@
 - Updated `tests/test_storage.py` to cover edge cases in database cleanup (e.g., reverse ranges).
 - Achieved 100% pass rate for 47 unit tests.
 - **Refactor**: Replaced dynamic configuration generation with a bundled `config.toml`. The default configuration file is now shipped with the package and copied to the user's config directory on first run.
-- **Feat**: Enhanced `asearch -c` (continue) to support relative history IDs. Users can now use `~1` (most recent), `~2` (second most recent), etc., instead of looking up exact database IDs.
+- **Feat**: Enhanced `asky -c` (continue) to support relative history IDs. Users can now use `~1` (most recent), `~2` (second most recent), etc., instead of looking up exact database IDs.
 - **Feat**: Added support for **Predefined Prompts**. Users can define reusable prompts in `config.toml` under `[user_prompts]` and invoke them via `/key` (e.g., `ask /wh Rotterdam`).
 - **Feat**: Added `--prompts` / `-p` flag to list configured user prompts.
 - **Change**: Renamed `--print-answer` short flag from `-p` to `-pa` to accommodate the new prompts flag.
