@@ -164,6 +164,8 @@ elif "db_path" in _gen and _gen["db_path"]:
 else:
     DB_PATH = _get_config_dir() / "history.db"
 
+TEMPLATE_PATH = Path(__file__).parent / "template.html"
+
 # Models
 MODELS = _CONFIG["models"]
 

@@ -124,6 +124,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable verbose output (prints config and LLM inputs).",
     )
+    parser.add_argument(
+        "-o",
+        "--open",
+        action="store_true",
+        help="Open the final answer in a browser using a markdown template.",
+    )
     parser.add_argument("query", nargs="*", help="The query string")
     return parser.parse_args()
 
@@ -477,6 +483,7 @@ def main() -> None:
         args.summarize,
         verbose=args.verbose,
         usage_tracker=usage_tracker,
+        open_browser=args.open,
     )
 
     # Save Interaction

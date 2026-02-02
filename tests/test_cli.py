@@ -30,6 +30,8 @@ def mock_args():
         all=False,
         print_ids=None,
         prompts=False,
+        verbose=False,
+        open=False,
         query=["test", "query"],
     )
 
@@ -234,6 +236,7 @@ def test_main_flow(
         prompts=False,
         query=["test"],
         verbose=False,
+        open=False,
     )
     mock_run_loop.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
@@ -254,6 +257,7 @@ def test_main_flow(
         False,
         verbose=False,
         usage_tracker=ANY,
+        open_browser=False,
     )
     mock_gen_sum.assert_called_once_with("test", "Final Answer", usage_tracker=ANY)
     mock_save.assert_called_once()
@@ -291,6 +295,7 @@ def test_main_flow_verbose(
         prompts=False,
         query=["test"],
         verbose=True,
+        open=False,
     )
     mock_run_loop.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
@@ -315,4 +320,5 @@ def test_main_flow_verbose(
         False,
         verbose=True,
         usage_tracker=ANY,
+        open_browser=False,
     )

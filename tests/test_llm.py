@@ -10,6 +10,7 @@ from asky.llm import (
     generate_summaries,
     run_conversation_loop,
     count_tokens,
+    render_to_browser,
 )
 
 
@@ -243,3 +244,33 @@ def test_generate_summaries_short_query(mock_get_msg):
     assert q_sum == ""
     assert a_sum == "Answer summary"
     assert mock_get_msg.call_count == 1
+
+
+@patch("asky.llm.webbrowser.open")
+@patch("asky.llm.tempfile.NamedTemporaryFile")
+@patch("builtins.open")
+@patch("asky.config.TEMPLATE_PATH")
+def test_render_to_browser(
+    mock_template_path, mock_open_file, mock_tempfile, mock_browser_open
+):
+    # Setup mocks
+    mock_template_path.exists.return_value = True
+    mock_template_path.__str__.return_value = "/path/to/template.html"
+
+    mock_file = MagicMock()
+    mock_file.read.return_value = "<html><body>{{CONTENT}}</body></html>"
+    mock_open_file.return_value.__enter__.return_value = mock_file
+
+    mock_temp = MagicMock()
+    mock_temp.name = "/tmp/temp_asky.html"
+    mock_tempfile.return_value.__enter__.return_value = mock_temp
+
+    # Call the function
+    render_to_browser("Test Markdown")
+
+    # Assertions
+    mock_open_file.assert_any_call(mock_template_path, "r")
+    mock_temp.write.assert_called()
+    written_content = mock_temp.write.call_args[0][0]
+    assert "Test Markdown" in written_content
+    mock_browser_open.assert_called_with(f"file://{mock_temp.name}")

@@ -3,7 +3,9 @@
 import json
 import os
 import re
+import tempfile
 import time
+import webbrowser
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -248,6 +250,7 @@ def run_conversation_loop(
     summarize: bool,
     verbose: bool = False,
     usage_tracker: Optional[UsageTracker] = None,
+    open_browser: bool = False,
 ) -> str:
     """Run the multi-turn conversation loop with tool execution."""
     turn = 0
@@ -293,6 +296,9 @@ def run_conversation_loop(
                     console.print(Markdown(final_answer))
                 else:
                     print(final_answer)
+
+                if open_browser:
+                    render_to_browser(final_answer)
                 break
             messages.append(msg)
             for call in calls:
@@ -311,6 +317,35 @@ def run_conversation_loop(
     finally:
         print(f"\nQuery completed in {time.perf_counter() - start_time:.2f} seconds")
     return final_answer
+
+
+def render_to_browser(content: str) -> None:
+    """Render markdown content in a browser using a template."""
+    try:
+        from asky.config import TEMPLATE_PATH
+
+        if not TEMPLATE_PATH.exists():
+            print(f"Error: Template not found at {TEMPLATE_PATH}")
+            return
+
+        with open(TEMPLATE_PATH, "r") as f:
+            template = f.read()
+
+        # Escape backticks for JS template literal
+        safe_content = content.replace("`", "\\`").replace("${", "\\${")
+
+        html_content = template.replace("{{CONTENT}}", safe_content)
+
+        with tempfile.NamedTemporaryFile(
+            "w", delete=False, suffix=".html", prefix="temp_asky_"
+        ) as f:
+            f.write(html_content)
+            temp_path = f.name
+
+        print(f"[Opening browser: {temp_path}]")
+        webbrowser.open(f"file://{temp_path}")
+    except Exception as e:
+        print(f"Error rendering to browser: {e}")
 
 
 def generate_summaries(

@@ -2,6 +2,14 @@
 
 ## 2026-02-02
 
+- **Feat**: Introduced **markdown browser rendering**.
+  - Added `-o/--open` flag to the CLI to render model output in the browser.
+  - Created a lean, responsive `template.html` using a lightweight markdown parser.
+  - Implemented `render_to_browser` in `llm.py` to inject content into the template and open it with the system browser.
+  - Updated `system_prefix` in `config.toml` to encourage models to use markdown formatting.
+  - Added unit tests for browser rendering logic and updated existing tests to handle the new flag.
+
+
 - **Fix**: Resolved **database bootstrapping failure** on first run.
   - The CLI was attempting to count database records for the banner before the database was initialized.
   - Moved `init_db()` to the beginning of `main()` in `cli.py`.
