@@ -2,6 +2,12 @@
 
 ## 2026-02-02
 
+- **Feat**: Introduced **default context size setting** in the configuration.
+  - Added `default_context_size` (default: 4096) to `[general]` section in `config.toml`.
+  - Exposed `DEFAULT_CONTEXT_SIZE` in `config.py`.
+  - Updated `run_conversation_loop` in `llm.py` to use `DEFAULT_CONTEXT_SIZE` if not specified in model configuration.
+  - Added unit test in `test_config.py` to verify the setting.
+
 - **Feat**: Implemented **token usage tracking and reporting**.
   - Added `UsageTracker` class to `llm.py` to accumulate token counts per model alias.
   - Updated `get_llm_msg` to print the number of tokens sent in each turn.

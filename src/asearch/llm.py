@@ -27,6 +27,7 @@ from asearch.config import (
     SUMMARIZE_QUERY_PROMPT_TEMPLATE,
     SUMMARIZE_ANSWER_PROMPT_TEMPLATE,
     REQUEST_TIMEOUT,
+    DEFAULT_CONTEXT_SIZE,
 )
 from asearch.html import strip_think_tags
 from asearch.tools import dispatch_tool_call, reset_read_urls
@@ -264,7 +265,7 @@ def run_conversation_loop(
 
             # Token & Turn Tracking
             total_tokens = count_tokens(messages)
-            context_size = model_config.get("context_size", 4096)
+            context_size = model_config.get("context_size", DEFAULT_CONTEXT_SIZE)
             turns_left = MAX_TURNS - turn + 1
 
             status_msg = (

@@ -22,3 +22,10 @@ def test_system_prompt_params():
     # Verify strings are importable and non-empty
     assert isinstance(SYSTEM_PROMPT, str)
     assert len(SYSTEM_PROMPT) > 0
+
+
+def test_default_context_size():
+    from asearch.config import DEFAULT_CONTEXT_SIZE
+
+    assert isinstance(DEFAULT_CONTEXT_SIZE, int)
+    assert DEFAULT_CONTEXT_SIZE > 0

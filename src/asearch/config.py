@@ -65,6 +65,7 @@ def load_config() -> Dict[str, Any]:
                 "default_model": "gf",
                 "summarization_model": "lfm",
                 "request_timeout": 60,
+                "default_context_size": 4096,
             },
             "api": {},
             "models": {
@@ -143,6 +144,7 @@ USER_AGENT = _gen.get(
 )
 LLM_USER_AGENT = _gen.get("llm_user_agent", USER_AGENT)
 REQUEST_TIMEOUT = _gen.get("request_timeout", 60)
+DEFAULT_CONTEXT_SIZE = _gen.get("default_context_size", 4096)
 
 # Database
 # DB Path logic:

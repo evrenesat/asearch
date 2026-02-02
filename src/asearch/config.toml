@@ -30,6 +30,9 @@ max_turns = 20
 # Timeout for API requests in seconds
 request_timeout = 60
 
+# Default context size (if not specified in the model configuration)
+default_context_size = 4096
+
 # Default model used when no model is specified via CLI (-m).
 default_model = "gf"
 
