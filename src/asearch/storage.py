@@ -41,6 +41,16 @@ def get_history(limit: int = 10) -> List[tuple]:
     return rows
 
 
+def get_db_record_count() -> int:
+    """Return the total number of entries in the history table."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM history")
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+
 def get_interaction_context(ids: List[int], full: bool = False) -> str:
     """Get context from previous interactions by their IDs."""
     if not ids:

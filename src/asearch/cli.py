@@ -10,13 +10,25 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 
-from asearch.config import DEFAULT_MODEL, MODELS, USER_PROMPTS
+from asearch.config import (
+    DEFAULT_MODEL,
+    MODELS,
+    USER_PROMPTS,
+    SUMMARIZATION_MODEL,
+    SEARCH_PROVIDER,
+    DEFAULT_CONTEXT_SIZE,
+    MAX_TURNS,
+    QUERY_SUMMARY_MAX_CHARS,
+    ANSWER_SUMMARY_MAX_CHARS,
+)
+from asearch.banner import get_banner
 from asearch.storage import (
     init_db,
     get_history,
     get_interaction_context,
     cleanup_db,
     save_interaction,
+    get_db_record_count,
 )
 from asearch.llm import (
     construct_system_prompt,
@@ -321,6 +333,41 @@ def main() -> None:
     """Main entry point for the CLI."""
     args = parse_args()
 
+    # Show banner for real queries (not history, cleanup, prompts, or implicit print)
+    if not (
+        args.history is not None
+        or args.cleanup_db
+        or (args.cleanup_db is None and args.all)
+        or args.print_ids
+        or args.prompts
+    ):
+        query_str = " ".join(args.query).strip()
+        is_implicit_print = bool(re.match(r"^(\d+\s*,?\s*)+$", query_str))
+
+        if not is_implicit_print and args.query:
+            model_alias = args.model
+            model_id = MODELS[model_alias]["id"]
+            sum_alias = SUMMARIZATION_MODEL
+            sum_id = MODELS[sum_alias]["id"]
+
+            model_ctx = MODELS[model_alias].get("context_size", DEFAULT_CONTEXT_SIZE)
+            sum_ctx = MODELS[sum_alias].get("context_size", DEFAULT_CONTEXT_SIZE)
+            db_count = get_db_record_count()
+
+            banner = get_banner(
+                model_alias,
+                model_id,
+                sum_alias,
+                sum_id,
+                DEFAULT_MODEL,
+                SEARCH_PROVIDER,
+                model_ctx,
+                sum_ctx,
+                MAX_TURNS,
+                db_count,
+            )
+            Console().print(banner)
+
     if args.verbose:
         print("\n=== CONFIGURATION ===")
         print(f"Selected Model: {args.model}")
@@ -329,12 +376,6 @@ def main() -> None:
         print(f"Summarize: {args.summarize}")
         print(f"Force Search: {args.force_search}")
         print("-" * 20)
-        from asearch.config import (
-            DEFAULT_MODEL,
-            MAX_TURNS,
-            QUERY_SUMMARY_MAX_CHARS,
-            ANSWER_SUMMARY_MAX_CHARS,
-        )
 
         print(f"DEFAULT_MODEL: {DEFAULT_MODEL}")
         print(f"MAX_TURNS: {MAX_TURNS}")

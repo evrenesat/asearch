@@ -2,6 +2,13 @@
 
 ## 2026-02-02
 
+- **Feat**: Enhanced CLI with a **shiny banner**.
+  - Added `get_banner` function to `banner.py` using `rich`.
+  - Integrated the banner into `cli.py` to show model details, summarizer details, search backend, and context limits in a rounded rectangle.
+  - **Expansion**: Reorganized the banner into a two-column layout to include **Default Model**, **Max Turns**, and **Database Record Count**.
+  - **Fix**: Adjusted banner styling to use `border_style="dim"` instead of a global `style="dim"`, ensuring icon and text colors remain vibrant.
+  - Ensured the banner is only shown for actual queries to maintain a clean interface for history and maintenance tasks.
+
 - **Feat**: Introduced **configurable query summarization threshold**.
   - Added `continue_query_threshold` (default: 160) to `[general]` section in `config.toml`.
   - Exposed `CONTINUE_QUERY_THRESHOLD` in `config.py`.

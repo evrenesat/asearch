@@ -235,7 +235,10 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
     mock_run_loop.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
-    with patch("asearch.cli.MODELS", {"gf": {"id": "gemini-flash-latest"}}):
+    with patch(
+        "asearch.cli.MODELS",
+        {"gf": {"id": "gemini-flash-latest"}, "lfm": {"id": "llama-fallback"}},
+    ):
         main()
 
     mock_init.assert_called_once()
@@ -281,7 +284,10 @@ def test_main_flow_verbose(
     mock_run_loop.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
-    with patch("asearch.cli.MODELS", {"gf": {"id": "gemini-flash-latest"}}):
+    with patch(
+        "asearch.cli.MODELS",
+        {"gf": {"id": "gemini-flash-latest"}, "lfm": {"id": "llama-fallback"}},
+    ):
         main()
 
     captured = capsys.readouterr()
