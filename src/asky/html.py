@@ -43,9 +43,7 @@ class HTMLStripper(HTMLParser):
                 if self.current_href:
                     href = self.current_href
                     if self.base_url:
-                        # print(f"Base URL: {self.base_url}, Href: {href}")
                         href = urljoin(self.base_url, href)
-                        print(f"Joined Href: {href}")
                     self.links.append({"text": text, "href": href})
 
     def get_data(self) -> str:

@@ -1,5 +1,16 @@
 # Development Log
 
+## 2026-02-03 (Refactor)
+
+- **Refactor**: Re-architected core conversation loop into `ConversationEngine` and `ToolRegistry`.
+  - Converted `run_conversation_loop` from a standalone function to a structured class (`ConversationEngine`).
+  - Introduced `ToolRegistry` to manage tool schemas and dispatching dynamically at runtime.
+  - Eliminated hardcoded tool selection logic in favor of a registration-based system.
+  - Improved extensibility for future AI agent features (e.g., dynamic tool loading/unloading).
+  - Maintained 100% test pass rate (69 tests) with backward-compatibility wrappers.
+  - Updated `config.py` to deprecate the global `TOOLS` constant in favor of the registry.
+
+
 ## 2026-02-02
 
 - **Feat**: Enabled **browser rendering for history printing**.

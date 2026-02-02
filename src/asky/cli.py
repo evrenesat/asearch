@@ -35,7 +35,8 @@ from asky.storage import (
 )
 from asky.llm import (
     construct_system_prompt,
-    run_conversation_loop,
+    ConversationEngine,
+    create_default_tool_registry,
     generate_summaries,
     is_markdown,
     UsageTracker,
@@ -487,14 +488,16 @@ def main() -> None:
     model_config = MODELS[args.model]
 
     usage_tracker = UsageTracker()
-    final_answer = run_conversation_loop(
-        model_config,
-        messages,
-        args.summarize,
+    registry = create_default_tool_registry()
+    engine = ConversationEngine(
+        model_config=model_config,
+        tool_registry=registry,
+        summarize=args.summarize,
         verbose=args.verbose,
         usage_tracker=usage_tracker,
         open_browser=args.open,
     )
+    final_answer = engine.run(messages)
 
     # Save Interaction
     if final_answer:

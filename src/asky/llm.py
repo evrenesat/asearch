@@ -7,7 +7,8 @@ import re
 import tempfile
 import time
 import webbrowser
-from typing import Any, Dict, List, Optional
+import inspect
+from typing import Any, Dict, List, Optional, Callable
 
 import requests
 from rich.console import Console
@@ -15,7 +16,6 @@ from rich.markdown import Markdown
 
 from asky.config import (
     ANSWER_SUMMARY_MAX_CHARS,
-    CONTINUE_QUERY_THRESHOLD,
     CUSTOM_TOOLS,
     DEEP_DIVE_PROMPT_TEMPLATE,
     DEEP_RESEARCH_PROMPT_TEMPLATE,
@@ -24,17 +24,13 @@ from asky.config import (
     LLM_USER_AGENT,
     MAX_TURNS,
     MODELS,
-    QUERY_SUMMARY_MAX_CHARS,
     REQUEST_TIMEOUT,
-    SUMMARIZATION_INPUT_LIMIT,
-    SUMMARIZATION_MODEL,
     SUMMARIZE_ANSWER_PROMPT_TEMPLATE,
-    SUMMARIZE_QUERY_PROMPT_TEMPLATE,
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_SUFFIX,
-    TOOLS,
 )
 from asky.html import strip_think_tags
+from asky import summarization
 from asky.tools import (
     _execute_custom_tool,
     execute_get_date_time,
@@ -108,6 +104,178 @@ def count_tokens(messages: List[Dict[str, Any]]) -> int:
     return total_chars // 4
 
 
+class ToolRegistry:
+    """Manages tool schemas and dispatches tool calls."""
+
+    def __init__(self):
+        self._tools: Dict[str, Dict[str, Any]] = {}  # name -> schema
+        self._executors: Dict[str, Callable] = {}  # name -> executor function
+
+    def register(
+        self,
+        name: str,
+        schema: Dict[str, Any],
+        executor: Callable[..., Dict[str, Any]],
+    ) -> None:
+        """Register a tool with its schema and executor."""
+        self._tools[name] = schema
+        self._executors[name] = executor
+
+    def get_schemas(self) -> List[Dict[str, Any]]:
+        """Return list of tool definitions for LLM payload."""
+        return [{"type": "function", "function": t} for t in self._tools.values()]
+
+    def get_tool_names(self) -> List[str]:
+        """Return list of registered tool names."""
+        return list(self._tools.keys())
+
+    def dispatch(
+        self,
+        call: Dict[str, Any],
+        summarize: bool = False,
+        usage_tracker: Optional[UsageTracker] = None,
+    ) -> Dict[str, Any]:
+        """Dispatch a tool call to its registered executor."""
+        func_call = call.get("function", {})
+        name = func_call.get("name")
+        args_str = func_call.get("arguments", "{}")
+
+        try:
+            args = json.loads(args_str) if args_str else {}
+        except json.JSONDecodeError:
+            return {"error": f"Invalid JSON arguments for tool: {name}"}
+
+        executor = self._executors.get(name)
+        if not executor:
+            return {"error": f"Unknown tool: {name}"}
+
+        # Check executor signature to see if it accepts summarize or usage_tracker
+        try:
+            sig = inspect.signature(executor)
+            params = sig.parameters
+            call_kwargs = {}
+            if "summarize" in params:
+                call_kwargs["summarize"] = summarize
+            if "usage_tracker" in params:
+                call_kwargs["usage_tracker"] = usage_tracker
+
+            if call_kwargs:
+                # Merge with tool-provided args if they don't overlap
+                # Tool provided args take precedence if they arrive from the LLM
+                return executor(args, **call_kwargs)
+            return executor(args)
+        except Exception as e:
+            logger.error(f"Error executing tool '{name}': {e}")
+            return {"error": f"Tool execution failed: {str(e)}"}
+
+
+class ConversationEngine:
+    """Orchestrates multi-turn LLM conversations with tool execution."""
+
+    def __init__(
+        self,
+        model_config: Dict[str, Any],
+        tool_registry: ToolRegistry,
+        summarize: bool = False,
+        verbose: bool = False,
+        usage_tracker: Optional[UsageTracker] = None,
+        open_browser: bool = False,
+    ):
+        self.model_config = model_config
+        self.tool_registry = tool_registry
+        self.summarize = summarize
+        self.verbose = verbose
+        self.usage_tracker = usage_tracker
+        self.open_browser = open_browser
+        self.start_time: float = 0
+        self.final_answer: str = ""
+
+    def run(self, messages: List[Dict[str, Any]]) -> str:
+        """Run the multi-turn conversation loop."""
+        turn = 0
+        self.start_time = time.perf_counter()
+        original_system_prompt = (
+            messages[0]["content"]
+            if messages and messages[0]["role"] == "system"
+            else ""
+        )
+
+        try:
+            while turn < MAX_TURNS:
+                turn += 1
+                logger.info(f"Starting turn {turn}/{MAX_TURNS}")
+
+                # Token & Turn Tracking
+                total_tokens = count_tokens(messages)
+                context_size = self.model_config.get(
+                    "context_size", DEFAULT_CONTEXT_SIZE
+                )
+                turns_left = MAX_TURNS - turn + 1
+
+                status_msg = (
+                    f"\n\n[SYSTEM UPDATE]:\n"
+                    f"- Context Used: {total_tokens / context_size * 100:.2f}%"
+                    f"- Turns Remaining: {turns_left} (out of {MAX_TURNS})\n"
+                    f"Please manage your context usage efficiently."
+                )
+                if messages and messages[0]["role"] == "system":
+                    messages[0]["content"] = original_system_prompt + status_msg
+
+                msg = get_llm_msg(
+                    self.model_config["id"],
+                    messages,
+                    use_tools=True,
+                    verbose=self.verbose,
+                    model_alias=self.model_config.get("alias"),
+                    usage_tracker=self.usage_tracker,
+                    # Pass schemas from registry
+                    tool_schemas=self.tool_registry.get_schemas(),
+                )
+
+                calls = extract_calls(msg, turn)
+                if not calls:
+                    self.final_answer = strip_think_tags(msg.get("content", ""))
+                    if is_markdown(self.final_answer):
+                        console = Console()
+                        console.print(Markdown(self.final_answer))
+                    else:
+                        logger.info(self.final_answer)
+
+                    if self.open_browser:
+                        render_to_browser(self.final_answer)
+                    break
+
+                messages.append(msg)
+                for call in calls:
+                    logger.debug(f"Tool call [{len(str(call))} chrs]: {str(call)}")
+                    result = self.tool_registry.dispatch(
+                        call, self.summarize, self.usage_tracker
+                    )
+                    logger.debug(
+                        f"Tool result [{len(str(result))} chrs]: {str(result)}"
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": call["id"],
+                            "content": json.dumps(result),
+                        }
+                    )
+
+            if turn >= MAX_TURNS:
+                logger.info("Error: Max turns reached.")
+
+        except Exception as e:
+            logger.info(f"Error: {str(e)}")
+            logger.exception("Engine failure")
+        finally:
+            logger.info(
+                f"\nQuery completed in {time.perf_counter() - self.start_time:.2f} seconds"
+            )
+
+        return self.final_answer
+
+
 def get_llm_msg(
     model_id: str,
     messages: List[Dict[str, Any]],
@@ -115,6 +283,7 @@ def get_llm_msg(
     verbose: bool = False,
     model_alias: Optional[str] = None,
     usage_tracker: Optional[UsageTracker] = None,
+    tool_schemas: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Send messages to the LLM and get a response."""
     # Find the model config based on model_id
@@ -148,7 +317,7 @@ def get_llm_msg(
         "messages": messages,
     }
     if use_tools:
-        payload["tools"] = TOOLS
+        payload["tools"] = tool_schemas
         payload["tool_choice"] = "auto"
 
     max_retries = 10
@@ -248,6 +417,117 @@ def construct_system_prompt(
     return system_content
 
 
+def create_default_tool_registry() -> ToolRegistry:
+    """Create a ToolRegistry with all default and custom tools."""
+    registry = ToolRegistry()
+
+    registry.register(
+        "web_search",
+        {
+            "name": "web_search",
+            "description": "Search the web and return top results.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "count": {"type": "integer", "default": 5},
+                },
+                "required": ["q"],
+            },
+        },
+        execute_web_search,
+    )
+
+    def url_content_executor(
+        args: Dict[str, Any],
+        summarize: bool = False,
+        usage_tracker: Optional[UsageTracker] = None,
+    ) -> Dict[str, Any]:
+        result = execute_get_url_content(args)
+        # LLM can override the global summarize flag in its tool call
+        effective_summarize = args.get("summarize", summarize)
+        if effective_summarize:
+            for url, content in result.items():
+                if not content.startswith("Error:"):
+                    result[url] = f"Summary of {url}:\n" + _summarize_content(
+                        content=content,
+                        prompt_template=SUMMARIZE_ANSWER_PROMPT_TEMPLATE,
+                        max_output_chars=ANSWER_SUMMARY_MAX_CHARS,
+                        usage_tracker=usage_tracker,
+                    )
+        return result
+
+    registry.register(
+        "get_url_content",
+        {
+            "name": "get_url_content",
+            "description": "Fetch the content of one or more URLs and return their text content (HTML stripped).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "urls": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of URLs to fetch content from.",
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Single URL (deprecated, use 'urls' instead).",
+                    },
+                    "summarize": {
+                        "type": "boolean",
+                        "description": "If true, summarize the content of the page using an LLM.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        url_content_executor,
+    )
+
+    registry.register(
+        "get_url_details",
+        {
+            "name": "get_url_details",
+            "description": "Fetch content and extract links from a URL. Use this in deep dive mode.",
+            "parameters": {
+                "type": "object",
+                "properties": {"url": {"type": "string"}},
+                "required": ["url"],
+            },
+        },
+        execute_get_url_details,
+    )
+
+    registry.register(
+        "get_date_time",
+        {
+            "name": "get_date_time",
+            "description": "Return the current date and time.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+        lambda _: execute_get_date_time(),
+    )
+
+    # Register custom tools from config
+    for tool_name, tool_data in CUSTOM_TOOLS.items():
+        registry.register(
+            tool_name,
+            {
+                "name": tool_name,
+                "description": tool_data.get(
+                    "description", f"Custom tool: {tool_name}"
+                ),
+                "parameters": tool_data.get(
+                    "parameters", {"type": "object", "properties": {}}
+                ),
+            },
+            lambda args, name=tool_name: _execute_custom_tool(name, args),
+        )
+
+    return registry
+
+
 def run_conversation_loop(
     model_config: Dict[str, Any],
     messages: List[Dict[str, Any]],
@@ -256,73 +536,17 @@ def run_conversation_loop(
     usage_tracker: Optional[UsageTracker] = None,
     open_browser: bool = False,
 ) -> str:
-    """Run the multi-turn conversation loop with tool execution."""
-    turn = 0
-    start_time = time.perf_counter()
-    final_answer = ""
-    original_system_prompt = (
-        messages[0]["content"] if messages and messages[0]["role"] == "system" else ""
+    """Legacy wrapper for ConversationEngine.run()."""
+    registry = create_default_tool_registry()
+    engine = ConversationEngine(
+        model_config=model_config,
+        tool_registry=registry,
+        summarize=summarize,
+        verbose=verbose,
+        usage_tracker=usage_tracker,
+        open_browser=open_browser,
     )
-
-    try:
-        while turn < MAX_TURNS:
-            turn += 1
-            logger.info(f"Starting turn {turn}/{MAX_TURNS}")
-
-            # Token & Turn Tracking
-            total_tokens = count_tokens(messages)
-            context_size = model_config.get("context_size", DEFAULT_CONTEXT_SIZE)
-            turns_left = MAX_TURNS - turn + 1
-
-            status_msg = (
-                f"\n\n[SYSTEM UPDATE]:\n"
-                f"- Context Used: {total_tokens / context_size * 100:.2f}%"
-                f"- Turns Remaining: {turns_left} (out of {MAX_TURNS})\n"
-                f"Please manage your context usage efficiently."
-            )
-            if messages and messages[0]["role"] == "system":
-                messages[0]["content"] = original_system_prompt + status_msg
-
-            msg = get_llm_msg(
-                model_config["id"],
-                messages,
-                verbose=verbose,
-                model_alias=model_config.get("alias"),
-                usage_tracker=usage_tracker,
-            )
-            calls = extract_calls(msg, turn)
-            if not calls:
-                final_answer = strip_think_tags(msg.get("content", ""))
-                if is_markdown(final_answer):
-                    console = Console()
-                    console.print(Markdown(final_answer))
-                else:
-                    logger.info(final_answer)
-
-                if open_browser:
-                    render_to_browser(final_answer)
-                break
-            messages.append(msg)
-            for call in calls:
-                logger.debug(f"Tool call [{len(str(call))} chrs]: {str(call)}")
-                result = dispatch_tool_call(call, summarize, usage_tracker)
-                logger.debug(f"Tool result [{len(str(result))} chrs]: {str(result)}")
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": call["id"],
-                        "content": json.dumps(result),
-                    }
-                )
-        if turn >= MAX_TURNS:
-            logger.info("Error: Max turns reached.")
-    except Exception as e:
-        logger.info(f"Error: {str(e)}")
-    finally:
-        logger.info(
-            f"\nQuery completed in {time.perf_counter() - start_time:.2f} seconds"
-        )
-    return final_answer
+    return engine.run(messages)
 
 
 def render_to_browser(content: str) -> None:
@@ -360,99 +584,28 @@ def _summarize_content(
     max_output_chars: int,
     usage_tracker: Optional[UsageTracker] = None,
 ) -> str:
-    """Helper function to summarize content using the summarization model."""
-    try:
-        msgs = [
-            {
-                "role": "system",
-                "content": prompt_template,
-            },
-            {"role": "user", "content": content[:SUMMARIZATION_INPUT_LIMIT]},
-        ]
-        model_id = MODELS[SUMMARIZATION_MODEL]["id"]
-        model_alias = MODELS[SUMMARIZATION_MODEL].get("alias", SUMMARIZATION_MODEL)
-        msg = get_llm_msg(
-            model_id,
-            msgs,
-            use_tools=False,
-            model_alias=model_alias,
-            usage_tracker=usage_tracker,
-        )
-        summary = strip_think_tags(msg.get("content", "")).strip()
-
-        if len(summary) > max_output_chars:
-            summary = summary[: max_output_chars - 3] + "..."
-
-        return summary
-    except Exception as e:
-        logger.error(f"Error during summarization: {e}")
-        return content[:max_output_chars]
+    """Legacy wrapper for summarization._summarize_content."""
+    return summarization._summarize_content(
+        content,
+        prompt_template,
+        max_output_chars,
+        get_llm_msg_func=get_llm_msg,
+        usage_tracker=usage_tracker,
+    )
 
 
 def generate_summaries(
     query: str, answer: str, usage_tracker: Optional[UsageTracker] = None
 ) -> tuple[str, str]:
-    """Generate summaries for query and answer using the summarization model."""
-    query_summary = ""
-    answer_summary = ""
-    logger.debug(f"Query: {query}")
-    logger.debug(f"Answer: {answer}")
-
-    # Generate Query Summary (if needed)
-    if len(query) > CONTINUE_QUERY_THRESHOLD:
-        query_summary = _summarize_content(
-            content=query,
-            prompt_template=SUMMARIZE_QUERY_PROMPT_TEMPLATE,
-            max_output_chars=QUERY_SUMMARY_MAX_CHARS,
-            usage_tracker=usage_tracker,
-        )
-        logger.debug(f"Query Summary: {query_summary}")
-
-    # Generate Answer Summary (Always)
-    answer_summary = _summarize_content(
-        content=answer,
-        prompt_template=SUMMARIZE_ANSWER_PROMPT_TEMPLATE,
-        max_output_chars=ANSWER_SUMMARY_MAX_CHARS,
-        usage_tracker=usage_tracker,
+    """Legacy wrapper for summarization.generate_summaries."""
+    return summarization.generate_summaries(
+        query, answer, get_llm_msg_func=get_llm_msg, usage_tracker=usage_tracker
     )
-    logger.debug(f"Answer Summary: {answer_summary}")
-
-    return query_summary, answer_summary
 
 
 def dispatch_tool_call(
     call: Dict[str, Any], summarize: bool, usage_tracker: Optional[UsageTracker] = None
 ) -> Dict[str, Any]:
-    """Dispatch a tool call to the appropriate executor."""
-    func = call["function"]
-    name = func["name"]
-    args = json.loads(func["arguments"]) if func.get("arguments") else {}
-    args = json.loads(func["arguments"]) if func.get("arguments") else {}
-
-    logger.info(f"Dispatching tool: {name}")
-    logger.debug(f"Tool arguments: {args}")
-
-    if name == "web_search":
-        return execute_web_search(args)
-    if name == "get_url_content":
-        result = execute_get_url_content(args)
-        # LLM can override the global summarize flag in its tool call
-        effective_summarize = args.get("summarize", summarize)
-        if effective_summarize:
-            for url, content in result.items():
-                result[url] = f"Summary of {url}:\n" + _summarize_content(
-                    content=content,
-                    prompt_template=SUMMARIZE_ANSWER_PROMPT_TEMPLATE,
-                    max_output_chars=ANSWER_SUMMARY_MAX_CHARS,
-                    usage_tracker=usage_tracker,
-                )
-        return result
-    if name == "get_url_details":
-        return execute_get_url_details(args)
-    if name == "get_date_time":
-        return execute_get_date_time()
-
-    if name in CUSTOM_TOOLS:
-        return _execute_custom_tool(name, args)
-
-    return {"error": f"Unknown tool: {name}"}
+    """Legacy wrapper for ToolRegistry.dispatch()."""
+    registry = create_default_tool_registry()
+    return registry.dispatch(call, summarize, usage_tracker)

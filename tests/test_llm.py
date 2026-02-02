@@ -139,7 +139,7 @@ def test_get_llm_msg_retry_after(mock_post):
 
 
 @patch("asky.llm.get_llm_msg")
-@patch("asky.llm.dispatch_tool_call")
+@patch("asky.llm.ToolRegistry.dispatch")
 def test_run_conversation_loop_basic(mock_dispatch, mock_get_msg):
     # Mock LLM sequence:
     # 1. Tool call (web search)

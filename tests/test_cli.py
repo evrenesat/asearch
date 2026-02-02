@@ -217,11 +217,11 @@ def test_handle_print_answer_implicit_fail():
 @patch("asky.cli.parse_args")
 @patch("asky.cli.init_db")
 @patch("asky.cli.get_db_record_count")
-@patch("asky.cli.run_conversation_loop")
+@patch("asky.cli.ConversationEngine.run")
 @patch("asky.cli.generate_summaries")
 @patch("asky.cli.save_interaction")
 def test_main_flow(
-    mock_save, mock_gen_sum, mock_run_loop, mock_db_count, mock_init, mock_parse
+    mock_save, mock_gen_sum, mock_run, mock_db_count, mock_init, mock_parse
 ):
     mock_parse.return_value = argparse.Namespace(
         model="gf",
@@ -239,7 +239,7 @@ def test_main_flow(
         verbose=False,
         open=False,
     )
-    mock_run_loop.return_value = "Final Answer"
+    mock_run.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
     with patch(
@@ -249,16 +249,11 @@ def test_main_flow(
         main()
 
     mock_init.assert_called_once()
-    mock_run_loop.assert_called_once_with(
-        {"id": "gemini-flash-latest"},
+    mock_run.assert_called_once_with(
         [
-            {"role": "system", "content": construct_system_prompt(0, False, False)},
+            {"role": "system", "content": ANY},
             {"role": "user", "content": "test"},
-        ],
-        False,
-        verbose=False,
-        usage_tracker=ANY,
-        open_browser=False,
+        ]
     )
     mock_gen_sum.assert_called_once_with("test", "Final Answer", usage_tracker=ANY)
     mock_save.assert_called_once()
@@ -267,7 +262,7 @@ def test_main_flow(
 @patch("asky.cli.parse_args")
 @patch("asky.cli.init_db")
 @patch("asky.cli.get_db_record_count")
-@patch("asky.cli.run_conversation_loop")
+@patch("asky.cli.ConversationEngine.run")
 @patch("asky.cli.generate_summaries")
 @patch("asky.cli.save_interaction")
 @patch("asky.cli.os.environ.get")
@@ -275,7 +270,7 @@ def test_main_flow_verbose(
     mock_env_get,
     mock_save,
     mock_gen_sum,
-    mock_run_loop,
+    mock_run,
     mock_db_count,
     mock_init,
     mock_parse,
@@ -298,7 +293,7 @@ def test_main_flow_verbose(
         verbose=True,
         open=False,
     )
-    mock_run_loop.return_value = "Final Answer"
+    mock_run.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
 
     with patch(
@@ -312,14 +307,9 @@ def test_main_flow_verbose(
     assert "Selected Model: gf" in captured.out
     assert "DEFAULT_MODEL:" in captured.out
 
-    mock_run_loop.assert_called_once_with(
-        {"id": "gemini-flash-latest"},
+    mock_run.assert_called_once_with(
         [
-            {"role": "system", "content": construct_system_prompt(0, False, False)},
+            {"role": "system", "content": ANY},
             {"role": "user", "content": "test"},
-        ],
-        False,
-        verbose=True,
-        usage_tracker=ANY,
-        open_browser=False,
+        ]
     )

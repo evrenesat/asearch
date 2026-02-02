@@ -1,4 +1,4 @@
-from asky.config import MODELS, TOOLS, SYSTEM_PROMPT
+from asky.config import MODELS, SYSTEM_PROMPT
 
 
 def test_models_config():
@@ -7,15 +7,6 @@ def test_models_config():
     for model_key, config in MODELS.items():
         assert "id" in config
         assert "context_size" in config
-
-
-def test_tools_config():
-    assert isinstance(TOOLS, list)
-    assert len(TOOLS) > 0
-    for tool in TOOLS:
-        assert "type" in tool
-        assert "function" in tool
-        assert "name" in tool["function"]
 
 
 def test_system_prompt_params():

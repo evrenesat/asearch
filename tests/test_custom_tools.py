@@ -38,6 +38,7 @@ def mock_custom_tools():
         mock_tools.get.side_effect = get_side_effect
         mock_tools.__contains__.side_effect = contains_side_effect
 
+        mock_llm.items.return_value = mock_data.items()
         mock_llm.get.side_effect = get_side_effect
         mock_llm.__contains__.side_effect = contains_side_effect
 
