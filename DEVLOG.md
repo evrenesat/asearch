@@ -1,5 +1,17 @@
 # Development Log
 
+## 2026-02-02 (Refactor)
+
+- **Refactor**: Improved **summarization logic and context management**.
+  - Extracted `_summarize_content` helper in `llm.py` to handle both query and answer summarization.
+  - Removed hard-coded character limits (1000/5000) for summarization input.
+  - Introduced dynamic `SUMMARIZATION_INPUT_LIMIT` calculated as 80% of the summarization model's context size.
+  - Cleaned up `generate_summaries` to use the new helper and dynamic limits.
+- **Fix**: Resolved **test regressions** caused by refactoring.
+  - Removed obsolete `read_urls` tracking and related tests from `test_tools.py`.
+  - Fixed missing `dispatch_tool_call` import and corrected its call signature in `test_tools.py`.
+  - Updated `CUSTOM_TOOLS` mocks in `test_custom_tools.py` to ensure consistency across modules.
+
 ## 2026-02-02
 
 - **Feat**: Introduced **system-wide logging**.

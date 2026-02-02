@@ -1,37 +1,25 @@
 """Tool execution functions for web search and URL content retrieval."""
 
 import json
-import os
 import logging
-import requests
+import os
 import subprocess
-import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-logger = logging.getLogger(__name__)
+import requests
 
 from asky.config import (
-    SEARXNG_URL,
-    MODELS,
-    SUMMARIZATION_MODEL,
-    SEARCH_PROVIDER,
-    SERPER_API_URL,
-    SERPER_API_KEY_ENV,
     CUSTOM_TOOLS,
+    SEARCH_PROVIDER,
+    SEARXNG_URL,
+    SERPER_API_KEY_ENV,
+    SERPER_API_URL,
     USER_AGENT,
 )
-from asky.html import HTMLStripper, strip_tags, strip_think_tags
+from asky.html import HTMLStripper, strip_tags
 
-
-# Track URLs that have been read in the current session
-read_urls: List[str] = []
-
-
-def reset_read_urls() -> None:
-    """Reset the list of read URLs for a new session."""
-    global read_urls
-    read_urls = []
+logger = logging.getLogger(__name__)
 
 
 def _execute_searxng_search(q: str, count: int) -> Dict[str, Any]:
@@ -117,40 +105,6 @@ def execute_web_search(args: Dict[str, Any]) -> Dict[str, Any]:
         return _execute_searxng_search(q, count)
 
 
-def summarize_text(text: str) -> str:
-    """Summarize text using the defined summarization model."""
-    # Import here to avoid circular dependency
-    from asky.llm import get_llm_msg
-
-    if not text:
-        return ""
-
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant. Summarize the following text concisely, focusing on key facts.",
-            },
-            {
-                "role": "user",
-                "content": f"Text to summarize:\n\n{text[:50000]}",
-            },
-        ]
-
-        model_id = MODELS[SUMMARIZATION_MODEL]["id"]
-
-        logger.info(f"Summarizing text length: {len(text)} chars")
-        logger.debug(f"Text content (start): {text[:200]}...")
-
-        msg = get_llm_msg(model_id, messages, tools=None)
-        summary = strip_think_tags(msg.get("content", ""))
-
-        logger.debug(f"Summary result: {summary}")
-        return summary
-    except Exception as e:
-        return f"[Error in summarization: {str(e)}]"
-
-
 def _sanitize_url(url: str) -> str:
     """Remove artifacts like shell-escaped backslashes from URLs."""
     if not url:
@@ -159,67 +113,41 @@ def _sanitize_url(url: str) -> str:
     return url.replace("\\", "")
 
 
-def fetch_single_url(
-    url: str, max_chars: int, summarize: bool = False
-) -> Dict[str, str]:
+def fetch_single_url(url: str) -> Dict[str, str]:
     """Fetch content from a single URL."""
     url = _sanitize_url(url)
-    global read_urls
-    if url in read_urls:
-        return {url: "Error: Already read this URL."}
+
     try:
         headers = {"User-Agent": USER_AGENT}
         resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
         content = strip_tags(resp.text)
-
-        if summarize:
-            content = f"Summary of {url}:\n" + summarize_text(content)
-        else:
-            content = content[:max_chars]
-
-        read_urls.append(url)
         return {url: content}
     except Exception as e:
         return {url: f"Error: {str(e)}"}
 
 
-def execute_get_url_content(
-    args: Dict[str, Any], max_chars: int, summarize: bool
-) -> Dict[str, Any]:
+def execute_get_url_content(args: Dict[str, Any]) -> Dict[str, Any]:
     """Fetch content from one or more URLs."""
     header_url = args.get("url")
     urls = args.get("urls", [])
-
-    # LLM can override the global summarize flag in its tool call
-    effective_summarize = args.get("summarize", summarize)
-
     # Support both single 'url' and list 'urls'
     if header_url:
         urls.append(header_url)
-
     # Deduplicate and filter empty
     urls = list(set([u for u in urls if u]))
-
     if not urls:
         return {"error": "No URLs provided."}
-
     results = {}
     for i, url in enumerate(urls):
-        if i > 0 and effective_summarize:
-            # Small delay between summarizations to avoid hitting RPM limits
-            time.sleep(1)
-        results.update(fetch_single_url(url, max_chars, effective_summarize))
-
+        results.update(fetch_single_url(url))
     return results
 
 
-def execute_get_url_details(args: Dict[str, Any], max_chars: int) -> Dict[str, Any]:
+def execute_get_url_details(args: Dict[str, Any]) -> Dict[str, Any]:
     """Fetch content and extract links from a URL."""
     url = _sanitize_url(args.get("url", ""))
-    global read_urls
-    if url in read_urls:
-        return {"error": "You have already read this URL."}
+
     try:
         headers = {"User-Agent": USER_AGENT}
         resp = requests.get(url, headers=headers, timeout=20)
@@ -227,11 +155,8 @@ def execute_get_url_details(args: Dict[str, Any], max_chars: int) -> Dict[str, A
         s = HTMLStripper()
         s.feed(resp.text)
 
-        # Mark as read only after successful fetch
-        read_urls.append(url)
-
         return {
-            "content": s.get_data()[:max_chars],
+            "content": s.get_data(),
             "links": s.get_links()[:50],  # Limit links to avoid context overflow
             "system_note": "IMPORTANT: Do NOT use get_url_details again. Use get_url_content to read links.",
         }
@@ -299,30 +224,3 @@ def _execute_custom_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": f"Failed to execute custom tool '{name}': {str(e)}"}
-
-
-def dispatch_tool_call(
-    call: Dict[str, Any], max_chars: int, summarize: bool
-) -> Dict[str, Any]:
-    """Dispatch a tool call to the appropriate executor."""
-    func = call["function"]
-    name = func["name"]
-    args = json.loads(func["arguments"]) if func.get("arguments") else {}
-    args = json.loads(func["arguments"]) if func.get("arguments") else {}
-
-    logger.info(f"Dispatching tool: {name}")
-    logger.debug(f"Tool arguments: {args}")
-
-    if name == "web_search":
-        return execute_web_search(args)
-    if name == "get_url_content":
-        return execute_get_url_content(args, max_chars, summarize)
-    if name == "get_url_details":
-        return execute_get_url_details(args, max_chars)
-    if name == "get_date_time":
-        return execute_get_date_time()
-
-    if name in CUSTOM_TOOLS:
-        return _execute_custom_tool(name, args)
-
-    return {"error": f"Unknown tool: {name}"}

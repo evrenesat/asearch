@@ -1,7 +1,6 @@
 """Logging configuration for asky."""
 
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -29,7 +28,7 @@ def setup_logging(level_name: str, log_file: str) -> None:
     )
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "\n" + "-" * 80 + "\n" + "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     handler.setFormatter(formatter)
 

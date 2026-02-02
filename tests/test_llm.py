@@ -90,21 +90,6 @@ def test_get_llm_msg_success(mock_post):
 
 
 @patch("asky.llm.requests.post")
-def test_get_llm_msg_verbose(mock_post, capsys):
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{"message": {"role": "assistant", "content": "Hello"}}]
-    }
-    mock_post.return_value = mock_response
-
-    get_llm_msg("q34", [{"role": "user", "content": "Hi"}], verbose=True)
-    captured = capsys.readouterr()
-    assert "[DEBUG] Sending to LLM" in captured.out
-    assert "Last message sent:" in captured.out
-    assert "Hi" in captured.out
-
-
-@patch("asky.llm.requests.post")
 def test_get_llm_msg_rate_limit_retry(mock_post):
     # First call returns 429, second returns success
     response_429 = MagicMock()

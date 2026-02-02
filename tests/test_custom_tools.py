@@ -1,12 +1,16 @@
+from asky.llm import dispatch_tool_call
 import pytest
 from unittest.mock import MagicMock, patch
-from asky.tools import _execute_custom_tool, dispatch_tool_call
+from asky.tools import _execute_custom_tool
 
 
 @pytest.fixture
 def mock_custom_tools():
-    with patch("asky.tools.CUSTOM_TOOLS") as mock:
-        mock.get.side_effect = lambda name: {
+    with (
+        patch("asky.tools.CUSTOM_TOOLS") as mock_tools,
+        patch("asky.llm.CUSTOM_TOOLS") as mock_llm,
+    ):
+        mock_data = {
             "list_dir": {
                 "command": "ls {path}",
                 "description": "List dir",
@@ -23,10 +27,21 @@ def mock_custom_tools():
                     "properties": {"msg": {"type": "string"}},
                 },
             },
-        }.get(name)
-        # Also need to mock 'in CUSTOM_TOOLS' check
-        mock.__contains__.side_effect = lambda name: name in ["list_dir", "echo"]
-        yield mock
+        }
+
+        def get_side_effect(name):
+            return mock_data.get(name)
+
+        def contains_side_effect(name):
+            return name in mock_data
+
+        mock_tools.get.side_effect = get_side_effect
+        mock_tools.__contains__.side_effect = contains_side_effect
+
+        mock_llm.get.side_effect = get_side_effect
+        mock_llm.__contains__.side_effect = contains_side_effect
+
+        yield mock_tools
 
 
 @patch("subprocess.run")
@@ -76,7 +91,7 @@ def test_execute_custom_tool_quoting(mock_run, mock_custom_tools):
 
     # If user passes "quoted" string, we should strip it and re-quote it
     args = {"msg": '"already quoted"'}
-    result = _execute_custom_tool("echo", args)
+    _execute_custom_tool("echo", args)
 
     mock_run.assert_called_once()
     cmd = mock_run.call_args[0][0]
@@ -89,7 +104,7 @@ def test_dispatch_custom_tool(mock_run, mock_custom_tools):
     mock_run.return_value = MagicMock(stdout="ok", stderr="", returncode=0)
 
     call = {"function": {"name": "echo", "arguments": '{"msg": "test"}'}}
-    result = dispatch_tool_call(call, max_chars=1000, summarize=False)
-
+    result = dispatch_tool_call(call, summarize=False)
+    print(result)
     assert result["stdout"] == "ok"
     mock_run.assert_called_once()

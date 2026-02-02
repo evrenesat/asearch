@@ -75,8 +75,7 @@ def load_config() -> Dict[str, Any]:
                 "gf": {
                     "id": "gemini-flash-latest",
                     "api": "gemini",
-                    "max_chars": 1000000,
-                    "context_size": 1000000,
+                    "context_size": 4096,
                 }
             },
             "prompts": {
@@ -151,6 +150,16 @@ DEFAULT_CONTEXT_SIZE = _gen.get("default_context_size", 4096)
 LOG_LEVEL = _gen.get("log_level", "INFO")
 LOG_FILE = _gen.get("log_file", "~/.config/asky/asky.log")
 
+# Summarization Input Limit Calculation
+# Based on 80% of the summarization model's context size, converted to characters.
+_SUMMARIZATION_INPUT_RATIO = 0.8
+_CHARS_PER_TOKEN = 4
+_summarizer_config = _CONFIG["models"].get(SUMMARIZATION_MODEL, {})
+_summarizer_context = _summarizer_config.get("context_size", DEFAULT_CONTEXT_SIZE)
+SUMMARIZATION_INPUT_LIMIT = int(
+    _summarizer_context * _SUMMARIZATION_INPUT_RATIO * _CHARS_PER_TOKEN
+)
+
 # Database
 # DB Path logic:
 # 1. Env Var (name defined in config, e.g. SEARXNG_HISTORY_DB_PATH)
@@ -181,11 +190,11 @@ DEEP_RESEARCH_PROMPT_TEMPLATE = _prompts["deep_research"]
 DEEP_DIVE_PROMPT_TEMPLATE = _prompts["deep_dive"]
 SUMMARIZE_QUERY_PROMPT_TEMPLATE = _prompts.get(
     "summarize_query",
-    "Summarize the following query into a single short sentence (max {QUERY_SUMMARY_MAX_CHARS} chars).",
+    "Summarize the following query into a single short sentence.",
 )
 SUMMARIZE_ANSWER_PROMPT_TEMPLATE = _prompts.get(
     "summarize_answer",
-    "Summarize the following answer into a short paragraph (max {ANSWER_SUMMARY_MAX_CHARS} chars).",
+    "Summarize the following answer into a short paragraph. Be sure to include all numerical values and dates.",
 )
 USER_PROMPTS = _CONFIG.get("user_prompts", {})
 

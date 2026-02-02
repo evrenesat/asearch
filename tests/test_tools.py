@@ -6,11 +6,9 @@ from asky.tools import (
     execute_get_url_content,
     execute_get_url_details,
     execute_get_date_time,
-    dispatch_tool_call,
-    reset_read_urls,
-    summarize_text,
     _sanitize_url,
 )
+from asky.llm import dispatch_tool_call
 
 
 def test_sanitize_url():
@@ -23,13 +21,6 @@ def test_sanitize_url():
 def mock_requests_get():
     with patch("requests.get") as mock:
         yield mock
-
-
-@pytest.fixture
-def reset_urls():
-    reset_read_urls()
-    yield
-    reset_read_urls()
 
 
 @patch("asky.tools.SEARCH_PROVIDER", "searxng")
@@ -63,74 +54,45 @@ def test_execute_web_search_failure(mock_requests_get):
     assert "Search failed" in result["error"]
 
 
-def test_fetch_single_url_success(mock_requests_get, reset_urls):
+def test_fetch_single_url_success(mock_requests_get):
     mock_response = MagicMock()
     mock_response.text = "<p>Page content</p>"
     mock_requests_get.return_value = mock_response
 
-    result = fetch_single_url("http://example.com", max_chars=100)
+    result = fetch_single_url("http://example.com")
     assert "http://example.com" in result
     assert result["http://example.com"] == "Page content"
 
 
-def test_fetch_single_url_already_read(mock_requests_get, reset_urls):
-    mock_response = MagicMock()
-    mock_response.text = "content"
-    mock_requests_get.return_value = mock_response
-
-    # First fetch
-    fetch_single_url("http://example.com", max_chars=100)
-    # Second fetch
-    result = fetch_single_url("http://example.com", max_chars=100)
-    assert "Error: Already read this URL" in result["http://example.com"]
-
-
-def test_execute_get_url_content_batch(mock_requests_get, reset_urls):
+def test_execute_get_url_content_batch(mock_requests_get):
     mock_response = MagicMock()
     mock_response.text = "content"
     mock_requests_get.return_value = mock_response
 
     args = {"urls": ["http://a.com", "http://b.com"]}
-    result = execute_get_url_content(args, max_chars=100, summarize=False)
+    result = execute_get_url_content(args)
 
     assert "http://a.com" in result
     assert "http://b.com" in result
     assert len(result) == 2
 
 
-def test_execute_get_url_details(mock_requests_get, reset_urls):
+def test_execute_get_url_details(mock_requests_get):
     mock_response = MagicMock()
     mock_response.text = (
         '<html><body>Text <a href="http://link.com">Link</a></body></html>'
     )
     mock_requests_get.return_value = mock_response
 
-    result = execute_get_url_details({"url": "http://main.com"}, max_chars=100)
+    result = execute_get_url_details({"url": "http://main.com"})
     assert "content" in result
     assert "links" in result
     assert result["content"] == "Text Link"
     assert result["links"][0]["href"] == "http://link.com"
 
 
-def test_execute_get_url_details_failure_no_block(mock_requests_get, reset_urls):
-    # First attempt fails
-    mock_requests_get.side_effect = Exception("Network error")
-    result1 = execute_get_url_details({"url": "http://fail.com"}, max_chars=100)
-    assert "error" in result1
-
-    # Second attempt (mocking success now) should NOT say "Already read"
-    mock_requests_get.side_effect = None
-    mock_response = MagicMock()
-    mock_response.text = "<html><body>Success</body></html>"
-    mock_requests_get.return_value = mock_response
-
-    result2 = execute_get_url_details({"url": "http://fail.com"}, max_chars=100)
-    assert "content" in result2
-    assert result2["content"] == "Success"
-
-
 @patch("asky.tools.SEARCH_PROVIDER", "searxng")
-def test_dispatch_tool_call(mock_requests_get, reset_urls):
+def test_dispatch_tool_call(mock_requests_get):
     # Mock web search dispatch
     mock_response = MagicMock()
     mock_response.json.return_value = {"results": []}
@@ -139,7 +101,7 @@ def test_dispatch_tool_call(mock_requests_get, reset_urls):
     mock_requests_get.return_value = mock_response
 
     call = {"function": {"name": "web_search", "arguments": '{"q": "test"}'}}
-    result = dispatch_tool_call(call, max_chars=1000, summarize=False)
+    result = dispatch_tool_call(call, summarize=False)
     assert "results" in result
 
 
@@ -147,31 +109,6 @@ def test_execute_get_date_time():
     result = execute_get_date_time()
     assert "date_time" in result
     assert "T" in result["date_time"]  # Basic ISO format check
-
-
-@patch("asky.llm.get_llm_msg")
-def test_summarize_text(mock_get_msg):
-    # Mock LLM response
-    mock_get_msg.return_value = {"content": "Buffered Summary"}
-
-    summary = summarize_text("Long text content")
-
-    assert summary == "Buffered Summary"
-
-    # Verify strict mocking of inner import
-    # Note: summarize_text imports get_llm_msg inside the function.
-    # unittest.mock.patch usually handles this if we patch 'asky.llm.get_llm_msg'
-    # BEFORE summarize_text imports it?
-    # summarize_text does `from asky.llm import get_llm_msg` INSIDE.
-    # So we need to patch `asky.llm.get_llm_msg` globally, which `patch` should do.
-
-    args, kwargs = mock_get_msg.call_args
-    # First arg is model_id, checks config
-    assert len(args) >= 2
-
-
-def test_summarize_text_empty():
-    assert summarize_text("") == ""
 
 
 @patch("asky.tools.SEARCH_PROVIDER", "serper")
@@ -216,17 +153,3 @@ def test_execute_web_search_dispatch_searxng(mock_searxng):
 
     execute_web_search({"q": "test"})
     mock_searxng.assert_called_once()
-
-
-@patch("asky.tools.time.sleep")
-@patch("asky.tools.fetch_single_url")
-def test_execute_get_url_content_batch_summarize_delay(
-    mock_fetch, mock_sleep, reset_urls
-):
-    args = {"urls": ["http://a.com", "http://b.com", "http://c.com"]}
-    execute_get_url_content(args, max_chars=100, summarize=True)
-
-    # Delay should be called for i > 0 (i.e., for 2nd and 3rd URL)
-    assert mock_sleep.call_count == 2
-    mock_sleep.assert_called_with(1)
-    assert mock_fetch.call_count == 3
