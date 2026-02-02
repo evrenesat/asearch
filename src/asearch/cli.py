@@ -23,6 +23,7 @@ from asearch.llm import (
     run_conversation_loop,
     generate_summaries,
     is_markdown,
+    UsageTracker,
 )
 
 
@@ -425,18 +426,36 @@ def main() -> None:
     messages = build_messages(args, context_str)
     model_config = MODELS[args.model]
 
+    usage_tracker = UsageTracker()
     final_answer = run_conversation_loop(
-        model_config, messages, args.summarize, verbose=args.verbose
+        model_config,
+        messages,
+        args.summarize,
+        verbose=args.verbose,
+        usage_tracker=usage_tracker,
     )
 
     # Save Interaction
     if final_answer:
         print("\n[Saving interaction...]")
         query_text = " ".join(args.query)
-        query_summary, answer_summary = generate_summaries(query_text, final_answer)
+        query_summary, answer_summary = generate_summaries(
+            query_text, final_answer, usage_tracker=usage_tracker
+        )
         save_interaction(
             query_text, final_answer, args.model, query_summary, answer_summary
         )
+
+    # Print Session Usage Report
+    if usage_tracker.usage:
+        print("\n=== SESSION TOKEN USAGE ===")
+        total_session_tokens = 0
+        for m_alias, tokens in usage_tracker.usage.items():
+            print(f"  {m_alias:<15}: {tokens:,} tokens")
+            total_session_tokens += tokens
+        print("-" * 30)
+        print(f"  {'TOTAL':<15}: {total_session_tokens:,} tokens")
+        print("===========================\n")
 
 
 if __name__ == "__main__":

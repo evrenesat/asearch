@@ -2,6 +2,14 @@
 
 ## 2026-02-02
 
+- **Feat**: Implemented **token usage tracking and reporting**.
+  - Added `UsageTracker` class to `llm.py` to accumulate token counts per model alias.
+  - Updated `get_llm_msg` to print the number of tokens sent in each turn.
+  - Enhanced `get_llm_msg` to extract real usage data from API responses if available (falls back to naive `len // 4` count).
+  - Updated `run_conversation_loop` and `generate_summaries` to report usage through the tracker.
+  - Added a session summary report at the end of the query execution, showing separate usage for the main model and the summarization model.
+  - Updated unit tests to support the new tracking logic.
+
 - **Fix**: Improved **rate limit handling and backoff robustness**.
   - Increased `max_retries` from 5 to 10 in `llm.py`.
   - Capped exponential backoff at 60 seconds to stay within API limit reset windows.

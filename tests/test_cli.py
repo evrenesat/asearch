@@ -1,6 +1,6 @@
 import pytest
 import argparse
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 from asearch.cli import (
     parse_args,
     show_history,
@@ -247,7 +247,9 @@ def test_main_flow(mock_save, mock_gen_sum, mock_run_loop, mock_init, mock_parse
         ],
         False,
         verbose=False,
+        usage_tracker=ANY,
     )
+    mock_gen_sum.assert_called_once_with("test", "Final Answer", usage_tracker=ANY)
     mock_save.assert_called_once()
 
 
@@ -295,4 +297,5 @@ def test_main_flow_verbose(
         ],
         False,
         verbose=True,
+        usage_tracker=ANY,
     )

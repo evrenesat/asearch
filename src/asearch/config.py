@@ -21,7 +21,8 @@ def _hydrate_models(config: Dict[str, Any]) -> Dict[str, Any]:
     api_defs = config.get("api", {})
     models = config.get("models", {})
 
-    for model_data in models.values():
+    for alias, model_data in models.items():
+        model_data["alias"] = alias
         api_ref = model_data.get("api")
         if api_ref and api_ref in api_defs:
             api_config = api_defs[api_ref]

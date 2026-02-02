@@ -67,6 +67,19 @@ def parse_textual_tool_call(text: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+class UsageTracker:
+    """Track token usage per model alias."""
+
+    def __init__(self):
+        self.usage: Dict[str, int] = {}
+
+    def add_usage(self, model_alias: str, tokens: int):
+        self.usage[model_alias] = self.usage.get(model_alias, 0) + tokens
+
+    def get_total_usage(self, model_alias: str) -> int:
+        return self.usage.get(model_alias, 0)
+
+
 def count_tokens(messages: List[Dict[str, Any]]) -> int:
     """Naive token counting: chars / 4."""
     total_chars = 0
@@ -74,6 +87,10 @@ def count_tokens(messages: List[Dict[str, Any]]) -> int:
         content = m.get("content")
         if content:
             total_chars += len(content)
+        # Also count tool calls and results
+        tc = m.get("tool_calls")
+        if tc:
+            total_chars += len(json.dumps(tc))
     return total_chars // 4
 
 
@@ -82,6 +99,8 @@ def get_llm_msg(
     messages: List[Dict[str, Any]],
     tools: Optional[List[Dict]] = TOOLS,
     verbose: bool = False,
+    model_alias: Optional[str] = None,
+    usage_tracker: Optional[UsageTracker] = None,
 ) -> Dict[str, Any]:
     """Send messages to the LLM and get a response."""
     # Find the model config based on model_id
@@ -134,13 +153,35 @@ def get_llm_msg(
                 print(f"  {json.dumps(last_msg, indent=2)}")
         print("-" * 20)
 
+    tokens_sent = count_tokens(messages)
+    if model_alias:
+        print(f"[{model_alias}] Sent: {tokens_sent} tokens")
+    else:
+        print(f"[{model_id}] Sent: {tokens_sent} tokens")
+
     for attempt in range(max_retries):
         try:
             resp = requests.post(
                 url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]
+            resp_json = resp.json()
+
+            # Extract usage if available, otherwise use naive count
+            usage = resp_json.get("usage", {})
+            prompt_tokens = usage.get("prompt_tokens", tokens_sent)
+            completion_tokens = usage.get("completion_tokens", 0)
+            if "completion_tokens" not in usage:
+                completion_tokens = (
+                    len(json.dumps(resp_json["choices"][0]["message"])) // 4
+                )
+
+            total_call_tokens = prompt_tokens + completion_tokens
+
+            if usage_tracker and model_alias:
+                usage_tracker.add_usage(model_alias, total_call_tokens)
+
+            return resp_json["choices"][0]["message"]
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 429:
                 if attempt < max_retries - 1:
@@ -204,6 +245,7 @@ def run_conversation_loop(
     messages: List[Dict[str, Any]],
     summarize: bool,
     verbose: bool = False,
+    usage_tracker: Optional[UsageTracker] = None,
 ) -> str:
     """Run the multi-turn conversation loop with tool execution."""
     turn = 0
@@ -234,7 +276,13 @@ def run_conversation_loop(
             if messages and messages[0]["role"] == "system":
                 messages[0]["content"] = original_system_prompt + status_msg
 
-            msg = get_llm_msg(model_config["id"], messages, verbose=verbose)
+            msg = get_llm_msg(
+                model_config["id"],
+                messages,
+                verbose=verbose,
+                model_alias=model_config.get("alias"),
+                usage_tracker=usage_tracker,
+            )
             calls = extract_calls(msg, turn)
             if not calls:
                 final_answer = strip_think_tags(msg.get("content", ""))
@@ -263,7 +311,9 @@ def run_conversation_loop(
     return final_answer
 
 
-def generate_summaries(query: str, answer: str) -> tuple[str, str]:
+def generate_summaries(
+    query: str, answer: str, usage_tracker: Optional[UsageTracker] = None
+) -> tuple[str, str]:
     """Generate summaries for query and answer using the summarization model."""
     query_summary = ""
     answer_summary = ""
@@ -281,7 +331,14 @@ def generate_summaries(query: str, answer: str) -> tuple[str, str]:
                 {"role": "user", "content": query[:1000]},
             ]
             model_id = MODELS[SUMMARIZATION_MODEL]["id"]
-            msg = get_llm_msg(model_id, msgs, tools=None)
+            model_alias = MODELS[SUMMARIZATION_MODEL].get("alias", SUMMARIZATION_MODEL)
+            msg = get_llm_msg(
+                model_id,
+                msgs,
+                tools=None,
+                model_alias=model_alias,
+                usage_tracker=usage_tracker,
+            )
             query_summary = strip_think_tags(msg.get("content", "")).strip()
             if len(query_summary) > QUERY_SUMMARY_MAX_CHARS:
                 query_summary = query_summary[: QUERY_SUMMARY_MAX_CHARS - 3] + "..."
@@ -301,7 +358,14 @@ def generate_summaries(query: str, answer: str) -> tuple[str, str]:
             {"role": "user", "content": answer[:5000]},
         ]
         model_id = MODELS[SUMMARIZATION_MODEL]["id"]
-        msg = get_llm_msg(model_id, msgs, tools=None)
+        model_alias = MODELS[SUMMARIZATION_MODEL].get("alias", SUMMARIZATION_MODEL)
+        msg = get_llm_msg(
+            model_id,
+            msgs,
+            tools=None,
+            model_alias=model_alias,
+            usage_tracker=usage_tracker,
+        )
         answer_summary = strip_think_tags(msg.get("content", "")).strip()
         if len(answer_summary) > ANSWER_SUMMARY_MAX_CHARS:
             answer_summary = answer_summary[: ANSWER_SUMMARY_MAX_CHARS - 3] + "..."
