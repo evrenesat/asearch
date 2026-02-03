@@ -7,11 +7,11 @@ from asky.cli import (
     load_context,
     build_messages,
     print_answers,
-    handle_cleanup,
-    handle_print_answer_implicit,
+    handle_delete_messages,
     handle_print_answer_implicit,
     main,
 )
+from asky.cli.sessions import handle_delete_sessions_command as handle_delete_sessions
 from asky.config import MODELS
 from asky.core import construct_system_prompt
 
@@ -26,8 +26,10 @@ def mock_args():
         continue_ids=None,
         summarize=False,
         force_search=False,
-        cleanup_db=None,
+        delete_messages=None,
+        delete_sessions=None,
         all=False,
+        print_session=None,
         print_ids=None,
         prompts=False,
         verbose=False,
@@ -182,24 +184,34 @@ def test_print_answers(mock_get_context, capsys):
     mock_get_context.assert_called_with([1, 2], full=True)
 
 
-@patch("asky.cli.history.cleanup_db")
-def test_handle_cleanup(mock_cleanup):
+@patch("asky.cli.history.delete_messages")
+def test_handle_delete_messages(mock_delete):
     args = MagicMock()
-    args.cleanup_db = "1,2"
+    args.delete_messages = "1,2"
     args.all = False
 
-    assert handle_cleanup(args) is True
-    mock_cleanup.assert_called_with(ids="1,2")
+    assert handle_delete_messages(args) is True
+    mock_delete.assert_called_with(ids="1,2")
 
 
-@patch("asky.cli.history.cleanup_db")
-def test_handle_cleanup_all(mock_cleanup):
+@patch("asky.cli.history.delete_messages")
+def test_handle_delete_messages_all(mock_delete):
     args = MagicMock()
-    args.cleanup_db = None
+    args.delete_messages = None
     args.all = True
 
-    assert handle_cleanup(args) is True
-    mock_cleanup.assert_called_with(delete_all=True)
+    assert handle_delete_messages(args) is True
+    mock_delete.assert_called_with(delete_all=True)
+
+
+@patch("asky.storage.delete_sessions")
+def test_handle_delete_sessions(mock_delete):
+    args = MagicMock()
+    args.delete_sessions = "3"
+    args.all = False
+
+    assert handle_delete_sessions(args) is True
+    mock_delete.assert_called_with(ids="3")
 
 
 @patch("asky.cli.main.history.print_answers_command")
@@ -248,8 +260,10 @@ def test_main_flow(
         continue_ids=None,
         summarize=False,
         force_search=False,
-        cleanup_db=None,
+        delete_messages=None,
+        delete_sessions=None,
         all=False,
+        print_session=None,
         print_ids=None,
         prompts=False,
         query=["test"],
@@ -307,8 +321,10 @@ def test_main_flow_verbose(
         continue_ids=None,
         summarize=False,
         force_search=False,
-        cleanup_db=None,
+        delete_messages=None,
+        delete_sessions=None,
         all=False,
+        print_session=None,
         print_ids=None,
         prompts=False,
         query=["test"],

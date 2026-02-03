@@ -38,13 +38,20 @@ def get_interaction_context(ids: list[int], full: bool = False) -> str:
     return _repo.get_interaction_context(ids, full=full)
 
 
-def cleanup_db(
-    days: Optional[Union[int, str]] = None,
-    delete_all: bool = False,
+def delete_messages(
     ids: Optional[str] = None,
+    delete_all: bool = False,
 ) -> int:
-    """Cleanup using the default repository."""
-    return _repo.cleanup_db(days=days, delete_all=delete_all, ids=ids)
+    """Delete message history records."""
+    return _repo.delete_messages(ids=ids, delete_all=delete_all)
+
+
+def delete_sessions(
+    ids: Optional[str] = None,
+    delete_all: bool = False,
+) -> int:
+    """Delete session records and their messages."""
+    return _repo.delete_sessions(ids=ids, delete_all=delete_all)
 
 
 def get_db_record_count() -> int:

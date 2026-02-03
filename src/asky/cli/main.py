@@ -71,15 +71,21 @@ def parse_args() -> argparse.Namespace:
         "Helpful for avoiding hallucinations with small models",
     )
     parser.add_argument(
-        "--cleanup-db",
+        "--delete-messages",
         nargs="?",
         const="interactive",
-        help="Delete history records. usage: --cleanup-db [ID|ID-ID|ID,ID] or --cleanup-db --all",
+        help="Delete message history records. usage: --delete-messages [ID|ID-ID|ID,ID] or --delete-messages --all",
+    )
+    parser.add_argument(
+        "--delete-sessions",
+        nargs="?",
+        const="interactive",
+        help="Delete session records and their messages. usage: --delete-sessions [ID|ID-ID|ID,ID] or --delete-sessions --all",
     )
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Used with --cleanup-db to delete ALL history.",
+        help="Used with --delete-messages or --delete-sessions to delete ALL records.",
     )
     parser.add_argument(
         "-H",
@@ -95,6 +101,12 @@ def parse_args() -> argparse.Namespace:
         "--print-answer",
         dest="print_ids",
         help="Print the answer(s) for specific history IDs (comma-separated).",
+    )
+    parser.add_argument(
+        "-ps",
+        "--print-session",
+        dest="print_session",
+        help="Print session content by session ID or name.",
     )
     parser.add_argument(
         "-p",
@@ -203,7 +215,17 @@ def main() -> None:
     if args.history is not None:
         history.show_history_command(args.history)
         return
-    if history.handle_cleanup_command(args):
+    if history.handle_delete_messages_command(args):
+        return
+    if sessions.handle_delete_sessions_command(args):
+        return
+    if args.print_session:
+        sessions.print_session_command(
+            args.print_session,
+            open_browser=args.open,
+            mail_recipients=args.mail_recipients,
+            subject=args.subject,
+        )
         return
     if args.print_ids:
         history.print_answers_command(

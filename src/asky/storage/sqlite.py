@@ -139,18 +139,12 @@ class SQLiteHistoryRepository(HistoryRepository):
             context_parts.append(f"Answer: {a}")
         return "\n\n".join(context_parts)
 
-    def cleanup_db(
+    def delete_messages(
         self,
-        days: Optional[Union[int, str]] = None,
-        delete_all: bool = False,
         ids: Optional[str] = None,
+        delete_all: bool = False,
     ) -> int:
-        """Remove entries based on days, all, or specific IDs."""
-        # For backward compatibility with positional arguments
-        if isinstance(days, str):
-            ids = days
-            days = None
-
+        """Delete message history records by ID, range, list, or all."""
         self.init_db()
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -193,17 +187,91 @@ class SQLiteHistoryRepository(HistoryRepository):
                     print("Error: Invalid ID format. Use an integer.")
                     conn.close()
                     return 0
-        elif days is not None:
-            try:
-                days_int = int(days)
-                cutoff_date = (datetime.now() - timedelta(days=days_int)).isoformat()
-                c.execute("DELETE FROM history WHERE timestamp < ?", (cutoff_date,))
-            except (ValueError, TypeError):
-                conn.close()
-                return 0
         else:
             conn.close()
             return 0
+
+        deleted_count = c.rowcount
+        conn.commit()
+        conn.close()
+        return deleted_count
+
+    def delete_sessions(
+        self,
+        ids: Optional[str] = None,
+        delete_all: bool = False,
+    ) -> int:
+        """Delete session records and their associated messages."""
+        self.init_db()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Build list of session IDs to delete
+        session_ids_to_delete = []
+
+        if delete_all:
+            c.execute("SELECT id FROM sessions")
+            session_ids_to_delete = [r[0] for r in c.fetchall()]
+        elif ids:
+            if "-" in ids:
+                try:
+                    start_id, end_id = map(int, ids.split("-"))
+                    if start_id > end_id:
+                        start_id, end_id = end_id, start_id
+                    c.execute(
+                        "SELECT id FROM sessions WHERE id BETWEEN ? AND ?",
+                        (start_id, end_id),
+                    )
+                    session_ids_to_delete = [r[0] for r in c.fetchall()]
+                except ValueError:
+                    print(
+                        f"Error: Invalid range format. Use 'start-end' (e.g., '5-10')."
+                    )
+                    conn.close()
+                    return 0
+            elif "," in ids:
+                try:
+                    id_list = [int(x.strip()) for x in ids.split(",")]
+                    placeholders = ",".join(["?"] * len(id_list))
+                    c.execute(
+                        f"SELECT id FROM sessions WHERE id IN ({placeholders})",
+                        tuple(id_list),
+                    )
+                    session_ids_to_delete = [r[0] for r in c.fetchall()]
+                except ValueError:
+                    print("Error: Invalid list format. Use comma-separated integers.")
+                    conn.close()
+                    return 0
+            else:
+                try:
+                    target_id = int(ids.strip())
+                    c.execute("SELECT id FROM sessions WHERE id = ?", (target_id,))
+                    result = c.fetchone()
+                    if result:
+                        session_ids_to_delete = [result[0]]
+                except ValueError:
+                    print("Error: Invalid ID format. Use an integer.")
+                    conn.close()
+                    return 0
+        else:
+            conn.close()
+            return 0
+
+        if not session_ids_to_delete:
+            conn.close()
+            return 0
+
+        # Cascade delete: first delete session messages, then sessions
+        placeholders = ",".join(["?"] * len(session_ids_to_delete))
+        c.execute(
+            f"DELETE FROM session_messages WHERE session_id IN ({placeholders})",
+            tuple(session_ids_to_delete),
+        )
+
+        c.execute(
+            f"DELETE FROM sessions WHERE id IN ({placeholders})",
+            tuple(session_ids_to_delete),
+        )
 
         deleted_count = c.rowcount
         conn.commit()

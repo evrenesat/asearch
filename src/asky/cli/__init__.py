@@ -3,7 +3,10 @@
 from asky.cli.history import (
     show_history_command as show_history,
     print_answers_command as print_answers,
-    handle_cleanup_command as handle_cleanup,
+    handle_delete_messages_command as handle_delete_messages,
+)
+from asky.cli.sessions import (
+    handle_delete_sessions_command as handle_delete_sessions,
 )
 from asky.cli.prompts import list_prompts_command as list_prompts
 from asky.cli.chat import run_chat, load_context, build_messages

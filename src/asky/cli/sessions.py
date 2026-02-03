@@ -33,7 +33,7 @@ def show_session_history_command(limit: int) -> None:
         status_style = "bold green" if s.is_active else "dim"
 
         table.add_row(
-            f"S{s.id}",
+            str(s.id),
             s.name or "-",
             s.model,
             str(len(msgs)),
@@ -45,28 +45,34 @@ def show_session_history_command(limit: int) -> None:
 
 
 def print_session_command(
-    session_id_val: str,
+    id_or_name: str,
     open_browser: bool = False,
     mail_recipients: str = None,
     subject: str = None,
 ) -> None:
-    """Print or open session content."""
+    """Print session messages."""
     repo = SessionRepository()
 
-    # Resolve ID
+    # Try to get by ID first
     session = None
-    if session_id_val.isdigit():
-        session = repo.get_session_by_id(int(session_id_val))
-    else:
-        session = repo.get_session_by_name(session_id_val)
+    try:
+        session_id = int(id_or_name)
+        session = repo.get_session_by_id(session_id)
+    except ValueError:
+        # If not an integer, try by name
+        pass
 
     if not session:
-        print(f"Error: Session '{session_id_val}' not found.")
+        # Try by name
+        session = repo.get_session_by_name(id_or_name)
+
+    if not session:
+        print(f"Error: Session '{id_or_name}' not found.")
         return
 
     msgs = repo.get_session_messages(session.id)
     if not msgs:
-        print(f"Session S{session.id} is empty.")
+        print(f"Session {session.id} is empty.")
         return
 
     # Build full conversation text
@@ -111,3 +117,26 @@ def end_session_command() -> None:
         print(f"Session S{active.id} ({active.name or 'unnamed'}) ended.")
     else:
         print("No active session to end.")
+
+
+def handle_delete_sessions_command(args) -> bool:
+    """Handle delete-sessions flag."""
+    from asky.storage import delete_sessions
+
+    if args.delete_sessions or (
+        args.delete_sessions is None and getattr(args, "all", False)
+    ):
+        if args.all:
+            count = delete_sessions(delete_all=True)
+            print(f"Deleted all {count} session records and their messages.")
+        elif args.delete_sessions and (
+            "-" in args.delete_sessions or "," in args.delete_sessions
+        ):
+            count = delete_sessions(ids=args.delete_sessions)
+            print(f"Deleted {count} session record(s) and their messages.")
+        elif args.delete_sessions:
+            # Single ID
+            count = delete_sessions(ids=args.delete_sessions)
+            print(f"Deleted {count} session record(s) and their messages.")
+        return True
+    return False

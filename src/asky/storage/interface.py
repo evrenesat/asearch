@@ -73,13 +73,12 @@ class HistoryRepository(ABC):
         pass
 
     @abstractmethod
-    def cleanup_db(
+    def delete_messages(
         self,
-        days: Optional[int] = None,
-        delete_all: bool = False,
         ids: Optional[str] = None,
+        delete_all: bool = False,
     ) -> int:
-        """Delete records based on days, all, or specific IDs."""
+        """Delete message history records by ID, range, list, or all."""
         pass
 
     @abstractmethod

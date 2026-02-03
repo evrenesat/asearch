@@ -8,7 +8,8 @@ from asky.storage import (
     save_interaction,
     get_history,
     get_interaction_context,
-    cleanup_db,
+    delete_messages,
+    delete_sessions,
 )
 
 
@@ -21,8 +22,11 @@ def temp_db_path(tmp_path):
 
 @pytest.fixture
 def mock_db_path(temp_db_path):
-    # Mock the DB_PATH constant in sqlite implementation
-    with patch("asky.storage.sqlite.DB_PATH", temp_db_path):
+    # Mock the DB_PATH constant in storage implementations
+    with (
+        patch("asky.storage.sqlite.DB_PATH", temp_db_path),
+        patch("asky.storage.session.DB_PATH", temp_db_path),
+    ):
         yield temp_db_path
 
 
@@ -84,17 +88,16 @@ def test_cleanup_db(mock_db_path, capsys):
     # Verify insert
     assert len(get_history(10)) == 3
 
-    # Test cleanup by ID
-    # Get IDs
-    rows = get_history(10)  # desc order: 3, 2, 1 (if autoincrement starts at 1)
+    # Test deletion by ID
+    rows = get_history(10)
     ids = [r[0] for r in rows]
     target_id = ids[0]
 
-    cleanup_db(str(target_id))
+    delete_messages(str(target_id))
     assert len(get_history(10)) == 2
 
-    # Test cleanup all
-    cleanup_db(None, delete_all=True)
+    # Test delete all
+    delete_messages(delete_all=True)
     assert len(get_history(10)) == 0
 
 
@@ -105,11 +108,11 @@ def test_cleanup_db_edge_cases(mock_db_path, capsys):
         save_interaction(f"q{i}", f"a{i}", "m")
 
     rows = get_history(10)  # 5,4,3,2,1
-    # Test reverse range 4-2 (should delete 2,3,4)
-    cleanup_db("4-2")
+    # Test reverse range 4-2
+    delete_messages("4-2")
 
     remaining = get_history(10)
-    assert len(remaining) == 2  # 1 and 5 should remain
+    assert len(remaining) == 2
     rem_ids = sorted([r[0] for r in remaining])
     # The IDs in DB are likely 1,2,3,4,5. `cleanup_db("4-2")` deletes 2,3,4.
     # So 1 and 5 should remain.
@@ -123,16 +126,44 @@ def test_cleanup_db_edge_cases(mock_db_path, capsys):
     assert len(remaining) == 2
 
     # Test invalid range
-    cleanup_db("a-b")
+    delete_messages("a-b")
     captured = capsys.readouterr()
     assert "Error: Invalid range format" in captured.out
 
     # Test invalid list
-    cleanup_db("1,a")
+    delete_messages("1,a")
     captured = capsys.readouterr()
     assert "Error: Invalid list format" in captured.out
 
     # Test invalid ID
-    cleanup_db("abc")
+    delete_messages("abc")
     captured = capsys.readouterr()
     assert "Error: Invalid ID format" in captured.out
+
+
+def test_delete_sessions(mock_db_path):
+    from asky.storage.session import SessionRepository
+
+    repo = SessionRepository()
+    init_db()
+
+    # Create 3 sessions
+    sid1 = repo.create_session("model", name="s1")
+    sid2 = repo.create_session("model", name="s2")
+    sid3 = repo.create_session("model", name="s3")
+
+    # Add messages to sid1
+    repo.add_message(sid1, "user", "hi", "hi", 10)
+
+    # Verify messages exist
+    assert len(repo.get_session_messages(sid1)) == 1
+
+    # Test delete session 1
+    delete_sessions(str(sid1))
+    assert repo.get_session_by_id(sid1) is None
+    assert len(repo.get_session_messages(sid1)) == 0
+
+    # Test delete all
+    delete_sessions(delete_all=True)
+    assert repo.get_session_by_id(sid2) is None
+    assert repo.get_session_by_id(sid3) is None

@@ -129,7 +129,7 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
             args.sticky_session if args.sticky_session != "auto" else None
         )
         set_shell_session_id(s.id)
-        print(f"\n[Session S{s.id} ({s.name or 'auto'}) active]")
+        print(f"\n[Session {s.id} ({s.name or 'auto'}) active]")
 
     # Auto-resume from shell lock file
     elif shell_session_id:

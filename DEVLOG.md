@@ -1,5 +1,33 @@
 # Development Log
 
+## 2026-02-03 (Major Refactor & Feat)
+
+- **Refactor**: Database deletion commands completely redesigned
+  - Renamed `--cleanup-db` → `--delete-messages` for clarity
+  - **Removed undocumented days-based deletion logic** (single integers now mean single IDs, not days)
+  - Updated storage interface: removed `days` parameter completely
+  - Signature: `delete_messages(ids: Optional[str] = None, delete_all: bool = False)`
+  
+- **Feat**: Added `--delete-sessions` command
+  - Same semantics as messages: single ID, range (`1-10`), list (`1,3,5`), or `--all`
+  - **Cascade deletion**: Automatically removes associated `session_messages`
+  - Implementation leverages shared deletion logic for consistency
+  
+- **UX**: Removed confusing "S" prefix from sessions
+  - Sessions now display as `1, 2, 3` instead of `S1, S2, S3`
+  - Simplified session interaction across CLI
+  - Updated: session tables, chat banners, print commands
+  
+- **Feat**: Added `--print-session` command
+  - Dedicated command for session content: `-ps` / `--print-session`
+  - Accepts session ID or name directly (no S prefix)
+  - Separate from `--print-answer` (now history-only)
+  
+- **Testing**: Comprehensive test coverage
+  - All 24 unit tests passing
+  - Updated storage and CLI tests for new functionality
+  - Added integration test framework
+
 ## 2026-02-03 (Refactor)
 
 - **Refactor**: Replaced `get_date_time` tool with **system message date injection**.
