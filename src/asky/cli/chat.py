@@ -12,6 +12,7 @@ from asky.config import (
 from asky.core import (
     ConversationEngine,
     create_default_tool_registry,
+    create_deep_dive_tool_registry,
     UsageTracker,
     construct_system_prompt,
     generate_summaries,
@@ -110,7 +111,12 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
 
     # Initialize Components
     usage_tracker = UsageTracker()
-    registry = create_default_tool_registry()
+
+    if args.deep_dive:
+        registry = create_deep_dive_tool_registry()
+    else:
+        registry = create_default_tool_registry()
+
     model_config = MODELS[args.model]
 
     engine = ConversationEngine(
@@ -120,6 +126,7 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         verbose=args.verbose,
         usage_tracker=usage_tracker,
         open_browser=args.open,
+        deep_dive=args.deep_dive,
     )
 
     # Run loop

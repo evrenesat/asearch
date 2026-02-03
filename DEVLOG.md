@@ -1,5 +1,23 @@
 # Development Log
 
+## 2026-02-03 (Fix)
+
+- **Fix**: Resolved `KeyError: 'content'` in `api_client.py`.
+  - Occurred when logging request payloads containing messages without a `content` key (e.g., tool results).
+  - Switched to safe `.get("content")` with a fallback to an empty string.
+
+## 2026-02-03 (Feat)
+
+## 2026-02-03 (Feat)
+
+- **Feat**: Implemented **`page_crawler` tool for Deep Dive mode**.
+  - Designed separate `PageCrawlerState` to map complex URLs to simple integer IDs (e.g., `1:about, 2:contact`).
+  - Created `page_crawler` tool that accepts either `url` (initial fetch) or `link_ids` (follow-up).
+  - Enforced mutual exclusion: Deep Dive mode now *only* exposes `page_crawler` and `get_date_time` to the model.
+  - Implemented **summarization support**: When `-s/--summarize` is enabled, crawled pages are automatically summarized using the existing summarization engine.
+  - Helps smaller models explore links effectively without managing long URL strings.
+  - Updates persisting across conversation turns.
+
 ## 2026-02-03 (Refactor)
 
 - **Refactor**: Re-architected core conversation loop into `ConversationEngine` and `ToolRegistry`.

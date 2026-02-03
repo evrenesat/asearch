@@ -184,11 +184,16 @@ You are in DEEP RESEARCH mode. You MUST perform at least {n} distinct web search
 
 # Template for DEEP DIVE mode (-dd).
 deep_dive = """
-You are in DEEP DIVE mode. Follow these instructions:
-1. Use 'get_url_details' for the INITIAL page to retrieve content and links.
-2. Follow up to 25 relevant links within the same domain to gather comprehensive information.
-3. IMPORTANT: Use 'get_url_details' ONLY for the first page. Use 'get_url_content' for all subsequent links.
-4. Do not rely on your internal knowledge; base your answer strictly on the retrieved content.5. Do not use web_search in deep dive mode."""
+You are in DEEP DIVE mode. Use the 'page_crawler' tool exclusively:
+
+1. Start with page_crawler(url="<target>") to fetch initial page content and a numbered link list.
+2. Review the returned links (format: "1:link_text, 2:link_text, ...").
+3. Request additional pages using page_crawler(link_ids="1,3,5") with comma-separated IDs.
+4. Repeat steps 2-3 to explore up to 25 relevant links within the same domain.
+5. Base your answer strictly on the retrieved content, not internal knowledge.
+
+IMPORTANT: Only page_crawler is available in this mode.
+"""
 
 # --- Model Definitions ---
 # Each section [models.NAME] configures a specific model:

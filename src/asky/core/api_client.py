@@ -98,7 +98,9 @@ def get_llm_msg(
     log_payload = {
         **payload,
         "messages": [
-            m["content"][:400] + "..." for m in messages if m["role"] != "system"
+            (m.get("content") or "")[:400] + "..."
+            for m in messages
+            if m["role"] != "system"
         ],
     }
     logger.debug(f"Payload: {str(log_payload)}")
