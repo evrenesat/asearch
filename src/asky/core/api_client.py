@@ -95,15 +95,24 @@ def get_llm_msg(
     current_backoff = INITIAL_BACKOFF
 
     logger.info(f"Sending request to LLM: {model_id}")
+    # Log system messages separately
+    for m in messages:
+        if m.get("role") == "system":
+            logger.debug(f"System Message: {m.get('content')}")
+
+    def format_log_content(m: Dict[str, Any]) -> str:
+        content = m.get("content") or ""
+        if m.get("role") == "system" or verbose:
+            return content
+        if len(content) > 200:
+            return content[:200] + "..."
+        return content
+
     log_payload = {
         **payload,
-        "messages": [
-            (m.get("content") or "")[:9400] + "..."
-            for m in messages
-            if m["role"] != "system"
-        ],
+        "messages": [{**m, "content": format_log_content(m)} for m in messages],
     }
-    logger.debug(f"Payload: {str(log_payload)}")
+    logger.debug(f"Payload: {json.dumps(log_payload)}")
 
     tokens_sent = count_tokens(messages)
     logger.info(f"[{model_alias or model_id}] Sent: {tokens_sent} tokens")

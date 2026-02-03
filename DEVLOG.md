@@ -2,6 +2,22 @@
 
 ## 2026-02-03 (Fix)
 
+- **Fix**: Updated logging handler to **clear logs at application start**.
+  - Modified `setup_logging` in `logger.py` to explicitly delete the existing log file and its rotated backups upon initialization.
+  - Ensures each application run starts with a fresh log, improving readability and managing disk space.
+  - Verified with 0B truncation on start and 100% test pass rate.
+
+
+## 2026-02-03 (Feat)
+
+- **Feat**: Improved **LLM request logging** in `api_client.py`.
+  - System messages are now logged separately for better visibility.
+  - Content clipping in the payload log now respects the `verbose` flag.
+  - Non-system messages are clipped to 200 characters by default, while system messages remain full.
+  - Integrated `json.dumps` for cleaner payload logging.
+
+## 2026-02-03 (Fix)
+
 - **Fix**: Resolved `KeyError: 'content'` in `api_client.py`.
   - Occurred when logging request payloads containing messages without a `content` key (e.g., tool results).
   - Switched to safe `.get("content")` with a fallback to an empty string.
