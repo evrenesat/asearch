@@ -6,6 +6,17 @@
   - Occurred when logging request payloads containing messages without a `content` key (e.g., tool results).
   - Switched to safe `.get("content")` with a fallback to an empty string.
 
+## 2026-02-03 (Metadata & Fix)
+
+- **Feat**: Updated `pyproject.toml` with comprehensive project metadata.
+  - Added `authors` and `maintainers` (Evren Esat).
+  - Added `project.urls` (Homepage, Repository, Issues).
+  - Added `classifiers` for PyPI (Development Status, Environment, Audience, License, Topics).
+  - Added `keywords` for better discoverability.
+- **Fix**: Resolved `pytest` regression in `test_email.py`.
+  - Tests were inadvertently loading local configuration (e.g., `SMTP_USE_TLS`).
+  - Added explicit patching for `SMTP_USE_SSL` and `SMTP_USE_TLS` in test cases to ensure hermetic execution.
+
 ## 2026-02-03 (Feat)
 
 - **Feat**: Implemented **email sending capability**.

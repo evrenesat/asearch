@@ -19,6 +19,8 @@ def test_markdown_to_html():
 @patch("asky.email_sender.SMTP_PASSWORD", "password")
 @patch("asky.email_sender.SMTP_HOST", "smtp.test.com")
 @patch("asky.email_sender.SMTP_PORT", 587)
+@patch("asky.email_sender.SMTP_USE_SSL", False)
+@patch("asky.email_sender.SMTP_USE_TLS", True)
 def test_send_email_success(mock_smtp):
     mock_server = MagicMock()
     mock_smtp.return_value.__enter__.return_value = mock_server
@@ -51,6 +53,7 @@ def test_send_email_missing_creds(mock_smtp):
 @patch("smtplib.SMTP")
 @patch("asky.email_sender.SMTP_USER", "test@user.com")
 @patch("asky.email_sender.SMTP_PASSWORD", "password")
+@patch("asky.email_sender.SMTP_USE_SSL", False)
 def test_send_email_failure(mock_smtp):
     mock_server = MagicMock()
     mock_server.login.side_effect = Exception("Auth failed")

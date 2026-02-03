@@ -9,12 +9,39 @@ description = "AI-powered web search CLI with LLM tool-calling capabilities"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
+authors = [
+    { name = "Evren Ozkan" },
+]
+maintainers = [
+    { name = "Evren Ozkan" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+keywords = ["cli", "search", "llm", "ai", "agent", "web-search"]
 dependencies = [
     "markdown>=3.10.1",
     "pyperclip>=1.11.0",
     "requests",
     "rich",
 ]
+
+[project.urls]
+Homepage = "https://github.com/evrenesat/asky"
+Repository = "https://github.com/evrenesat/asky"
+Issues = "https://github.com/evrenesat/asky/issues"
 
 [project.scripts]
 ask = "asky.cli:main"
