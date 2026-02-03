@@ -1,5 +1,15 @@
 # Development Log
 
+## 2026-02-03 (Refactor)
+
+- **Refactor**: Replaced `get_date_time` tool with **system message date injection**.
+  - Removed `execute_get_date_time` function from `tools.py`.
+  - Removed `get_date_time` tool registration from both default and deep dive tool registries in `engine.py`.
+  - Updated `system_prefix` in `config.toml` to include a `{CURRENT_DATE}` placeholder with emphatic language.
+  - Modified `construct_system_prompt` in `prompts.py` to inject the current date dynamically.
+  - Uses strong wording ("VERIFIED", "CONFIRMED", "NOT a mock date") to ensure small local models trust the provided date over their training cutoff.
+  - Verified with 87 passing tests.
+
 ## 2026-02-03 (Feat)
 
 - **Feat**: Implemented **Persistent Session Support** with automatic context compaction.

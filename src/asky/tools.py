@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import subprocess
-from datetime import datetime
 from typing import Any, Dict
 
 import requests
@@ -172,11 +171,6 @@ def execute_get_url_details(args: Dict[str, Any]) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": f"Failed to fetch details: {str(e)}"}
-
-
-def execute_get_date_time() -> Dict[str, Any]:
-    """Return the current date and time."""
-    return {"date_time": datetime.now().isoformat()}
 
 
 def _execute_custom_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:

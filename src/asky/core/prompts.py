@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
@@ -63,7 +64,10 @@ def construct_system_prompt(
         DEEP_DIVE_PROMPT_TEMPLATE,
     )
 
-    system_content = SYSTEM_PROMPT
+    # Inject current date into the system prompt
+    current_date = datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+    system_content = SYSTEM_PROMPT.format(CURRENT_DATE=current_date)
+
     if force_search:
         system_content += FORCE_SEARCH_PROMPT
     system_content += SYSTEM_PROMPT_SUFFIX

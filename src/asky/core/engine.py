@@ -25,7 +25,6 @@ from asky.core.registry import ToolRegistry
 from asky.core.page_crawler import PageCrawlerState, execute_page_crawler
 from asky.tools import (
     _execute_custom_tool,
-    execute_get_date_time,
     execute_get_url_content,
     execute_get_url_details,
     execute_web_search,
@@ -237,16 +236,6 @@ def create_default_tool_registry() -> ToolRegistry:
         execute_get_url_details,
     )
 
-    registry.register(
-        "get_date_time",
-        {
-            "name": "get_date_time",
-            "description": "Return the current date and time.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-        lambda _: execute_get_date_time(),
-    )
-
     # Register custom tools from config
     for tool_name, tool_data in CUSTOM_TOOLS.items():
         registry.register(
@@ -291,16 +280,6 @@ def create_deep_dive_tool_registry() -> ToolRegistry:
             },
         },
         execute_page_crawler,
-    )
-
-    registry.register(
-        "get_date_time",
-        {
-            "name": "get_date_time",
-            "description": "Return the current date and time.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-        lambda _: execute_get_date_time(),
     )
 
     return registry

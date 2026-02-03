@@ -186,6 +186,9 @@ class SessionManager:
     def _compact_with_summaries(self) -> bool:
         """Concatenate existing summaries."""
         session_msgs = self.repo.get_session_messages(self.current_session.id)
+        logger.info(
+            f"Found {len(session_msgs)} messages to compact for session {self.current_session.id}"
+        )
         summary_parts = []
         for msg in session_msgs:
             if msg.summary:
@@ -195,7 +198,9 @@ class SessionManager:
                 summary_parts.append(f"{msg.role.capitalize()}: {msg.content[:100]}...")
 
         compacted_content = "\n".join(summary_parts)
+        logger.info(f"Compacted content length: {len(compacted_content)} chars")
         self.repo.compact_session(self.current_session.id, compacted_content)
+        logger.info(f"Compaction saved for session {self.current_session.id}")
         return True
 
     def _compact_with_llm(self) -> bool:

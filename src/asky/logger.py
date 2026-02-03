@@ -16,17 +16,17 @@ def setup_logging(level_name: str, log_file: str) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Clear existing log file and any rotated backups
-    if log_path.exists():
-        try:
-            log_path.unlink()
-        except OSError:
-            pass
+    # if log_path.exists():
+    #     try:
+    #         log_path.unlink()
+    #     except OSError:
+    #         pass
 
-    for backup in log_path.parent.glob(f"{log_path.name}.*"):
-        try:
-            backup.unlink()
-        except OSError:
-            pass
+    # for backup in log_path.parent.glob(f"{log_path.name}.*"):
+    #     try:
+    #         backup.unlink()
+    #     except OSError:
+    #         pass
 
     # Configure root logger
     logger = logging.getLogger()

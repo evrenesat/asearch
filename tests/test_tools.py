@@ -5,7 +5,6 @@ from asky.tools import (
     fetch_single_url,
     execute_get_url_content,
     execute_get_url_details,
-    execute_get_date_time,
     _sanitize_url,
 )
 from asky.core import dispatch_tool_call
@@ -103,12 +102,6 @@ def test_dispatch_tool_call(mock_requests_get):
     call = {"function": {"name": "web_search", "arguments": '{"q": "test"}'}}
     result = dispatch_tool_call(call, summarize=False)
     assert "results" in result
-
-
-def test_execute_get_date_time():
-    result = execute_get_date_time()
-    assert "date_time" in result
-    assert "T" in result["date_time"]  # Basic ISO format check
 
 
 @patch("asky.tools.SEARCH_PROVIDER", "serper")
