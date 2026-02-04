@@ -36,21 +36,6 @@ def parse_args() -> argparse.Namespace:
         help="Select the model alias",
     )
     parser.add_argument(
-        "-d",
-        "--deep-research",
-        nargs="?",
-        type=int,
-        const=5,
-        default=0,
-        help="Enable deep research mode (optional: specify min number of queries, default 5)",
-    )
-    parser.add_argument(
-        "-dd",
-        "--deep-dive",
-        action="store_true",
-        help="Enable deep dive mode (extracts links and encourages reading more pages from same domain)",
-    )
-    parser.add_argument(
         "-c",
         "--continue-chat",
         dest="continue_ids",

@@ -52,19 +52,13 @@ def extract_calls(msg: Dict[str, Any], turn: int) -> List[Dict[str, Any]]:
     return []
 
 
-def construct_system_prompt(
-    deep_research_n: int, deep_dive: bool, force_search: bool
-) -> str:
+def construct_system_prompt(force_search: bool) -> str:
     """Build the system prompt based on mode flags."""
     from asky.config import (
         SYSTEM_PROMPT,
         FORCE_SEARCH_PROMPT,
-        SYSTEM_PROMPT,
-        FORCE_SEARCH_PROMPT,
         SEARCH_SUFFIX,
         SYSTEM_PROMPT_SUFFIX,
-        DEEP_RESEARCH_PROMPT_TEMPLATE,
-        DEEP_DIVE_PROMPT_TEMPLATE,
     )
 
     # Inject current date into the system prompt
@@ -74,13 +68,7 @@ def construct_system_prompt(
     if force_search:
         system_content += FORCE_SEARCH_PROMPT
 
-    if not deep_dive:
-        system_content += SEARCH_SUFFIX
-
+    system_content += SEARCH_SUFFIX
     system_content += SYSTEM_PROMPT_SUFFIX
 
-    if deep_research_n > 0:
-        system_content += DEEP_RESEARCH_PROMPT_TEMPLATE.format(n=deep_research_n)
-    if deep_dive:
-        system_content += DEEP_DIVE_PROMPT_TEMPLATE
     return system_content

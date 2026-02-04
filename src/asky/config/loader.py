@@ -80,8 +80,6 @@ def load_config() -> Dict[str, Any]:
                 "system_prefix": "",
                 "force_search": "",
                 "system_suffix": "",
-                "deep_research": "",
-                "deep_dive": "",
             },
             "user_prompts": {},
             "tool": {},

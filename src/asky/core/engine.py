@@ -22,7 +22,6 @@ from asky.rendering import render_to_browser
 from asky.core.api_client import get_llm_msg, count_tokens, UsageTracker
 from asky.core.prompts import extract_calls, is_markdown
 from asky.core.registry import ToolRegistry
-from asky.core.page_crawler import PageCrawlerState, execute_page_crawler
 from asky.tools import (
     _execute_custom_tool,
     execute_get_url_content,
@@ -45,7 +44,6 @@ class ConversationEngine:
         verbose: bool = False,
         usage_tracker: Optional[UsageTracker] = None,
         open_browser: bool = False,
-        deep_dive: bool = False,
         session_manager: Optional[Any] = None,
     ):
         self.model_config = model_config
@@ -54,12 +52,9 @@ class ConversationEngine:
         self.verbose = verbose
         self.usage_tracker = usage_tracker
         self.open_browser = open_browser
-        self.deep_dive = deep_dive
         self.session_manager = session_manager
         self.start_time: float = 0
         self.final_answer: str = ""
-        # Initialize crawler state if in deep dive mode
-        self.crawler_state = PageCrawlerState() if deep_dive else None
 
     def run(self, messages: List[Dict[str, Any]], display_callback=None) -> str:
         """Run the multi-turn conversation loop."""
@@ -141,7 +136,6 @@ class ConversationEngine:
                     result = self.tool_registry.dispatch(
                         call,
                         self.summarize,
-                        crawler_state=self.crawler_state if self.deep_dive else None,
                     )
                     logger.debug(
                         f"Tool result [{len(str(result))} chrs]: {str(result)}"
@@ -319,41 +313,6 @@ def create_default_tool_registry(
             },
             lambda args, name=tool_name: _execute_custom_tool(name, args),
         )
-
-    return registry
-
-
-def create_deep_dive_tool_registry(
-    usage_tracker: Optional[UsageTracker] = None,
-    summarization_tracker: Optional[UsageTracker] = None,
-) -> ToolRegistry:
-    """Create a ToolRegistry for Deep Dive mode (only page_crawler & get_date_time)."""
-    registry = ToolRegistry()
-
-    registry.register(
-        "page_crawler",
-        {
-            "name": "page_crawler",
-            "description": "Fetch page content and links, or follow links by ID.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "url": {
-                        "type": "string",
-                        "description": "URL to crawl (returns content + numbered links).",
-                    },
-                    "link_ids": {
-                        "type": "string",
-                        "description": "Comma-separated list of Link IDs to fetch (e.g., '1,2,5').",
-                    },
-                },
-                "required": [],  # Logic enforces one or the other
-            },
-        },
-        lambda args, crawler_state=None: execute_page_crawler(
-            args, crawler_state, summarization_tracker=summarization_tracker
-        ),
-    )
 
     return registry
 

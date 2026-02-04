@@ -7,7 +7,6 @@ from asky.config import MODELS, LIVE_BANNER
 from asky.core import (
     ConversationEngine,
     create_default_tool_registry,
-    create_deep_dive_tool_registry,
     UsageTracker,
     construct_system_prompt,
     generate_summaries,
@@ -82,9 +81,7 @@ def build_messages(
     messages = [
         {
             "role": "system",
-            "content": construct_system_prompt(
-                args.deep_research, args.deep_dive, args.force_search
-            ),
+            "content": construct_system_prompt(args.force_search),
         },
     ]
 
@@ -177,14 +174,9 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         args, context_str, query_text, session_manager=session_manager
     )
 
-    if args.deep_dive:
-        registry = create_deep_dive_tool_registry(
-            usage_tracker=usage_tracker, summarization_tracker=summarization_tracker
-        )
-    else:
-        registry = create_default_tool_registry(
-            usage_tracker=usage_tracker, summarization_tracker=summarization_tracker
-        )
+    registry = create_default_tool_registry(
+        usage_tracker=usage_tracker, summarization_tracker=summarization_tracker
+    )
 
     engine = ConversationEngine(
         model_config=model_config,
@@ -193,7 +185,6 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         verbose=args.verbose,
         usage_tracker=usage_tracker,
         open_browser=args.open,
-        deep_dive=args.deep_dive,
         session_manager=session_manager,
     )
 

@@ -89,7 +89,6 @@ src/asky/
 │   ├── registry.py     # ToolRegistry for tool management
 │   ├── api_client.py   # LLM API calls, UsageTracker
 │   ├── session_manager.py  # Session lifecycle, compaction
-│   ├── page_crawler.py # Deep Dive mode page crawler
 │   └── prompts.py      # System prompt construction
 ├── storage/            # Data persistence layer
 │   ├── __init__.py     # Storage exports
@@ -132,8 +131,6 @@ The CLI is modularized for maintainability:
 | Flag | Purpose |
 |------|---------|
 | `-m, --model` | Select model alias |
-| `-d, --deep-research [N]` | Deep research mode (multiple searches) |
-| `-dd, --deep-dive` | Deep dive mode (recursive page crawling) |
 | `-c, --continue-chat` | Continue with context from previous IDs |
 | `-s, --summarize` | Use summaries for context/URL content |
 | `-fs, --force-search` | Force web search |
@@ -169,7 +166,6 @@ class ConversationEngine:
 **Key Features:**
 - Multi-turn tool execution loop (up to `MAX_TURNS`)
 - Token usage tracking
-- Support for regular and deep dive modes
 - Integration with `SessionManager` for persistent sessions
 
 #### ToolRegistry (`registry.py`)
@@ -185,7 +181,6 @@ class ToolRegistry:
 
 **Tool Types:**
 - **Built-in**: `web_search`, `get_url_content`, `get_url_details`
-- **Deep Dive Only**: `page_crawler`
 - **Custom**: User-defined in `config.toml` under `[tool.name]`
 
 #### API Client (`api_client.py`)
@@ -379,7 +374,7 @@ Sessions are tied to terminal instances via lock files (`/tmp/asky_session_{PID}
 
 ### 3. Dynamic Tool Registry
 Tools are registered dynamically at runtime, enabling:
-- Different tool sets for different modes (default vs. deep dive)
+- Different tool sets for different tasks
 - Easy addition of custom user-defined tools
 - Clean separation between tool definition and execution
 

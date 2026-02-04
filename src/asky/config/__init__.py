@@ -74,8 +74,6 @@ SYSTEM_PROMPT = _prompts["system_prefix"]
 FORCE_SEARCH_PROMPT = _prompts["force_search"]
 SEARCH_SUFFIX = _prompts["search_suffix"]
 SYSTEM_PROMPT_SUFFIX = _prompts["system_suffix"]
-DEEP_RESEARCH_PROMPT_TEMPLATE = _prompts["deep_research"]
-DEEP_DIVE_PROMPT_TEMPLATE = _prompts["deep_dive"]
 SUMMARIZE_QUERY_PROMPT_TEMPLATE = _prompts.get(
     "summarize_query",
     "Summarize the following query into a single short sentence.",

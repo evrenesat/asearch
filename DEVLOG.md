@@ -1,4 +1,17 @@
-# Development Log
+
+## 2026-02-04 - Simplified Research (Removed Deep Modes)
+
+**Summary**: Removed Deep Dive (`-dd`) and Deep Research (`-d`) modes to simplify the codebase. Most of their functionality can be achieved via custom user prompts.
+
+**Changes**:
+- **CLI**: Removed `-d/--deep-research` and `-dd/--deep-dive` flags.
+- **Core**: Deleted `page_crawler.py` and its registry logic. 
+- **Prompts**: Simplified `construct_system_prompt` to remove mode-specific injections.
+- **Config**: Cleaned up `config.toml` and exports by removing deep-mode templates.
+- **Tests**: Deleted related tests and updated CLI/LLM tests to match new signatures.
+- **Docs**: Updated `ARCHITECTURE.md` to reflect the removal.
+
+---
 
 ## 2026-02-04 - Auto HTML Generation
 

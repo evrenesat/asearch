@@ -61,8 +61,6 @@ class ToolRegistry:
             call_kwargs = {}
             if "summarize" in params:
                 call_kwargs["summarize"] = summarize
-            if "crawler_state" in params:
-                call_kwargs["crawler_state"] = crawler_state
 
             if call_kwargs:
                 # Merge with tool-provided args if they don't overlap

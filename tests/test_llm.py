@@ -38,23 +38,13 @@ def test_parse_textual_tool_call_invalid():
 
 def test_construct_system_prompt_modes():
     # Basic
-    p1 = construct_system_prompt(0, False, False)
+    p1 = construct_system_prompt(False)
     assert "DEEP RESEARCH mode" not in p1
     assert "DEEP DIVE mode" not in p1
     assert "always use web_search" not in p1
 
-    # Deep Research
-    p2 = construct_system_prompt(5, False, False)
-    assert "DEEP RESEARCH mode" in p2
-    assert "at least 5" in p2
-
-    # Deep Dive
-    p3 = construct_system_prompt(0, True, False)
-    assert "DEEP DIVE mode" in p3
-    assert "DEEP RESEARCH mode" not in p3
-
     # Force Search
-    p4 = construct_system_prompt(0, False, True)
+    p4 = construct_system_prompt(True)
     assert "always use web_search" in p4
 
 

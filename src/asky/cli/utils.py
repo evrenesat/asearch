@@ -62,8 +62,6 @@ def print_config(
 
     print("\n=== CONFIGURATION ===")
     print(f"Selected Model: {args.model}")
-    print(f"Deep Research: {args.deep_research}")
-    print(f"Deep Dive: {args.deep_dive}")
     print(f"Summarize: {args.summarize}")
     print(f"Force Search: {args.force_search}")
     print("-" * 20)

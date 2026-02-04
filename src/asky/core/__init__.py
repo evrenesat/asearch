@@ -5,7 +5,7 @@ from asky.core.registry import ToolRegistry
 from asky.core.engine import (
     ConversationEngine,
     create_default_tool_registry,
-    create_deep_dive_tool_registry,
+    create_default_tool_registry,
     run_conversation_loop,
     dispatch_tool_call,
     generate_summaries,

@@ -20,8 +20,6 @@ from asky.core import construct_system_prompt
 def mock_args():
     return argparse.Namespace(
         model="gf",
-        deep_research=0,
-        deep_dive=False,
         history=None,
         continue_ids=None,
         summarize=False,
@@ -50,8 +48,6 @@ def test_parse_args_defaults():
             args = parse_args()
             assert args.query == ["query"]
             assert args.model == "gf"
-            assert args.deep_research == 0
-            assert args.deep_dive is False
 
 
 def test_parse_args_options():
@@ -61,9 +57,6 @@ def test_parse_args_options():
             "asky",
             "-m",
             "q34",
-            "-d",
-            "5",
-            "-dd",
             "-H",
             "20",
             "-c",
@@ -74,8 +67,6 @@ def test_parse_args_options():
     ):
         args = parse_args()
         assert args.model == "q34"
-        assert args.deep_research == 5
-        assert args.deep_dive is True
         assert args.history == 20
         assert args.continue_ids == "1,2"
         assert args.summarize is True
@@ -256,8 +247,6 @@ def test_main_flow(
 ):
     mock_parse.return_value = argparse.Namespace(
         model="gf",
-        deep_research=0,
-        deep_dive=False,
         history=None,
         continue_ids=None,
         summarize=False,
@@ -321,8 +310,6 @@ def test_main_flow_verbose(
     mock_env_get.return_value = "fake_key_123456789"
     mock_parse.return_value = argparse.Namespace(
         model="gf",
-        deep_research=0,
-        deep_dive=False,
         history=None,
         continue_ids=None,
         summarize=False,
