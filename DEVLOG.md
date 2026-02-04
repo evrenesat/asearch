@@ -1,5 +1,20 @@
 # Development Log
 
+## 2026-02-04 - Auto HTML Generation
+
+**Summary**: Added automatic generation of HTML reports for conversations, improving readability and accessibility of outputs.
+
+**Changes**:
+- **Feature**: Automatically saves an HTML version of the conversation to `asky_latest_output.html` in the system temporary directory after every turn.
+- **Refactor**: Extracted HTML templating logic in `rendering.py` to be reusable.
+- **UX**: Prints a clickable file URL (`file:///...`) in the shell, allowing users to open the report on demand without forcing a browser window to open.
+- **Modes**:
+  - **Single Query**: Reports just the current Query and Answer.
+  - **Session Mode**: Reports the entire session transcript.
+
+**Notes**:
+- The file is overwritten on each turn, serving as a "current view" of the conversation.
+
 ## 2026-02-04 - In-Place Banner Updates with rich.Live
 
 **Summary**: Refactored banner display to use `rich.Live` for in-place multi-line updates, preserving terminal history.
@@ -652,5 +667,13 @@ Created comprehensive [ARCHITECTURE.md](ARCHITECTURE.md) and addressed code qual
 - **Testing**: Added unit tests in `tests/test_llm.py` to verify the graceful exit sequence and message injection.
 
 **Verification**:
-- Verified with new unit tests simulating a max-turn scenario.
 - Ran full test suite (101 passed) to ensure no regressions.
+
+## 2026-02-04 - Deep Dive Prompt Fix
+
+**Summary**: Fixed a bug where the `get_url_content` tool was incorrectly mentioned in the system prompt during Deep Dive mode, confusing models.
+
+**Changes**:
+- **Configuration**: Split `system_suffix` in `config.toml` into `search_suffix` (containing `get_url_content` instructions) and a reduced `system_suffix`.
+- **Logic**: Updated `prompts.py` to conditionally append `SEARCH_SUFFIX` only when *not* in Deep Dive mode.
+- **Verification**: Verified with reproduction script and full test suite (101 passed).

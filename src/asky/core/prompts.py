@@ -59,6 +59,9 @@ def construct_system_prompt(
     from asky.config import (
         SYSTEM_PROMPT,
         FORCE_SEARCH_PROMPT,
+        SYSTEM_PROMPT,
+        FORCE_SEARCH_PROMPT,
+        SEARCH_SUFFIX,
         SYSTEM_PROMPT_SUFFIX,
         DEEP_RESEARCH_PROMPT_TEMPLATE,
         DEEP_DIVE_PROMPT_TEMPLATE,
@@ -70,6 +73,10 @@ def construct_system_prompt(
 
     if force_search:
         system_content += FORCE_SEARCH_PROMPT
+
+    if not deep_dive:
+        system_content += SEARCH_SUFFIX
+
     system_content += SYSTEM_PROMPT_SUFFIX
 
     if deep_research_n > 0:

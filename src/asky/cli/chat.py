@@ -254,6 +254,33 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
                     query_text, final_answer, args.model, query_summary, answer_summary
                 )
 
+        # Auto-generate HTML Report
+        if final_answer:
+            from asky.rendering import save_html_report
+
+            html_source = ""
+            if session_manager and session_manager.current_session:
+                # Generate full session transcript
+                try:
+                    msgs = session_manager.repo.get_session_messages(
+                        session_manager.current_session.id
+                    )
+                    transcript_parts = []
+                    for m in msgs:
+                        role_title = "User" if m.role == "user" else "Assistant"
+                        transcript_parts.append(f"## {role_title}\n\n{m.content}")
+                    html_source = "\n\n---\n\n".join(transcript_parts)
+                except Exception as e:
+                    print(f"Error fetching session messages for HTML report: {e}")
+                    html_source = f"## Query\n{query_text}\n\n## Answer\n{final_answer}"
+            else:
+                # Single turn report
+                html_source = f"## Query\n{query_text}\n\n## Answer\n{final_answer}"
+
+            report_path = save_html_report(html_source)
+            if report_path:
+                print(f"[HTML Report: file://{report_path}]")
+
         # Send Email if requested
         if final_answer and getattr(args, "mail_recipients", None):
             from asky.email_sender import send_email

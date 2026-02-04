@@ -1,12 +1,9 @@
 # TODO
 
-- [ ] When we reach turn limit, instead of abruptly breaking the loop, make an extra call to model with all the remaining existing message history we have and tell it to
- your task. You cannot make any more tool calls.
+
   
-- [ ] Auto HTML generation:
-    - [ ] Automatically generate HTML version from Markdown after each result.
-    - [ ] Support both session mode and individual message mode.
-    - [ ] Save to a fixed named file in the temporary directory (overwrite on each update).
-    - [ ] Display the file link in the shell for easy access (clickable link) instead of auto-opening the browser.
+- [ ] In session history command we output a nicely formatted
+ table but for normal history it is still using old simpler uglier table and actually currently it's even broken it works but it looks weird so please update history output history command
+ just like session history you display as much as possible data from the table that is relevant to list of individual messages.
 
 
