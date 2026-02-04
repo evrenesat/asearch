@@ -61,14 +61,16 @@ class Interaction:
 
 @dataclass
 class Session:
-    """Represents a conversation session."""
+    """Represents a conversation session.
+
+    Sessions are persistent conversation threads that never end.
+    A shell attaches to a session via lock file, not DB state.
+    """
 
     id: int
     name: Optional[str]
     model: str
     created_at: str
-    ended_at: Optional[str]
-    is_active: bool
     compacted_summary: Optional[str]
 
 
@@ -142,8 +144,8 @@ class HistoryRepository(ABC):
         pass
 
     @abstractmethod
-    def get_active_session(self):
-        """Return the most recently created active session."""
+    def get_sessions_by_name(self, name: str) -> list:
+        """Return all sessions matching the given name."""
         pass
 
     @abstractmethod
@@ -161,11 +163,6 @@ class HistoryRepository(ABC):
     @abstractmethod
     def compact_session(self, session_id: int, compacted_summary: str) -> None:
         """Replace session message history with a compacted summary."""
-        pass
-
-    @abstractmethod
-    def end_session(self, session_id: int) -> None:
-        """Mark a session as completed."""
         pass
 
     @abstractmethod

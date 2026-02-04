@@ -2,8 +2,10 @@
 
 import logging
 import os
+import re
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from asky.config import (
     SESSION_COMPACTION_THRESHOLD,
@@ -25,6 +27,160 @@ logger = logging.getLogger(__name__)
 # Each terminal (identified by parent shell PID) gets its own lock file.
 LOCK_DIR = Path("/tmp")
 LOCK_PREFIX = "asky_session_"
+
+# Common stopwords to filter from session names
+STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "must",
+        "shall",
+        "can",
+        "need",
+        "dare",
+        "ought",
+        "used",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "also",
+        "now",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "this",
+        "that",
+        "these",
+        "those",
+        "am",
+        "and",
+        "but",
+        "if",
+        "or",
+        "because",
+        "while",
+        "although",
+        "i",
+        "me",
+        "my",
+        "myself",
+        "we",
+        "our",
+        "ours",
+        "ourselves",
+        "you",
+        "your",
+        "yours",
+        "yourself",
+        "yourselves",
+        "he",
+        "him",
+        "his",
+        "himself",
+        "she",
+        "her",
+        "hers",
+        "herself",
+        "it",
+        "its",
+        "itself",
+        "they",
+        "them",
+        "their",
+        "theirs",
+        "themselves",
+        "about",
+        "tell",
+    }
+)
+
+
+def generate_session_name(query: str, max_words: int = 2) -> str:
+    """Generate a session name from query by extracting key words.
+
+    Filters stopwords and joins with underscores.
+    Example: "what is the meaning of life" -> "meaning_life"
+    """
+    # Extract words (alphanumeric only)
+    words = re.findall(r"[a-zA-Z]+", query.lower())
+
+    # Filter stopwords and short words
+    key_words = [w for w in words if w not in STOPWORDS and len(w) > 2]
+
+    # Take first N words
+    selected = key_words[:max_words]
+
+    if not selected:
+        # Fallback if all words are stopwords
+        return "session"
+
+    return "_".join(selected)
 
 
 def _get_shell_pid() -> int:
@@ -56,15 +212,28 @@ def set_shell_session_id(session_id: int) -> None:
 
 
 def clear_shell_session() -> None:
-    """Remove the shell's session lock file."""
+    """Remove the shell's session lock file (detach from session)."""
     lock_file = _get_lock_file_path()
     if lock_file.exists():
         lock_file.unlink()
         logger.info(f"Session lock file removed: {lock_file}")
 
 
+class DuplicateSessionError(Exception):
+    """Raised when multiple sessions match a name and user must choose."""
+
+    def __init__(self, name: str, sessions: List[Tuple[int, str, str]]):
+        self.name = name
+        self.sessions = sessions  # List of (id, name, preview)
+        super().__init__(f"Multiple sessions named '{name}'")
+
+
 class SessionManager:
-    """Orchestrates persistent conversation sessions and compaction."""
+    """Orchestrates persistent conversation sessions and compaction.
+
+    Sessions are persistent conversation threads that never end.
+    A shell attaches to a session via lock file, not DB state.
+    """
 
     def __init__(
         self,
@@ -77,37 +246,78 @@ class SessionManager:
         self.current_session: Optional[Session] = None
         self.context_size = model_config.get("context_size", DEFAULT_CONTEXT_SIZE)
 
-    def start_or_resume(self, session_name: Optional[str] = None) -> Session:
-        """Start a new session or resume an existing one by name/ID."""
-        if session_name:
-            if session_name.lower().startswith("s") and session_name[1:].isdigit():
-                # By ID
-                session_id = int(session_name[1:])
-                session = self.repo.get_session_by_id(session_id)
-            else:
-                # By Name
-                session = self.repo.get_session_by_name(session_name)
+    def start_or_resume(
+        self, session_name: Optional[str] = None, query: Optional[str] = None
+    ) -> Session:
+        """Start a new session or resume an existing one.
 
+        Args:
+            session_name: Name or ID to resume. If numeric, treated as ID.
+            query: Query text for auto-generating session name if creating new.
+
+        Returns:
+            The session object.
+
+        Raises:
+            DuplicateSessionError: If multiple sessions match the name.
+        """
+        # Case 1: Resume by explicit ID (numeric session_name)
+        if session_name and session_name.isdigit():
+            session_id = int(session_name)
+            session = self.repo.get_session_by_id(session_id)
             if session:
                 self.current_session = session
                 return session
             else:
-                # Create new with name
+                # ID not found, create new with this as name
+                pass
+
+        # Case 2: Resume by name (including S-prefixed IDs for backwards compat)
+        if session_name:
+            # Handle legacy S prefix
+            if session_name.lower().startswith("s") and session_name[1:].isdigit():
+                session_id = int(session_name[1:])
+                session = self.repo.get_session_by_id(session_id)
+                if session:
+                    self.current_session = session
+                    return session
+
+            # Look up by name
+            matching_sessions = self.repo.get_sessions_by_name(session_name)
+
+            if len(matching_sessions) == 1:
+                # Exact match, resume it
+                self.current_session = matching_sessions[0]
+                return self.current_session
+            elif len(matching_sessions) > 1:
+                # Multiple matches - raise error with details for user
+                session_info = []
+                for s in matching_sessions:
+                    preview = self.repo.get_first_message_preview(s.id)
+                    session_info.append((s.id, s.name, preview))
+                raise DuplicateSessionError(session_name, session_info)
+            else:
+                # No match - create new with this name
                 sid = self.repo.create_session(
                     self.model_config["alias"], name=session_name
                 )
                 self.current_session = self.repo.get_session_by_id(sid)
                 return self.current_session
 
-        # No name provided, look for active one
-        session = self.repo.get_active_session()
-        if session:
-            self.current_session = session
-        else:
-            # Create fresh auto-session
-            sid = self.repo.create_session(self.model_config["alias"])
-            self.current_session = self.repo.get_session_by_id(sid)
+        # Case 3: No name provided - check shell lock file first
+        shell_session_id = get_shell_session_id()
+        if shell_session_id:
+            session = self.repo.get_session_by_id(shell_session_id)
+            if session:
+                self.current_session = session
+                return session
+            # Lock file points to deleted session, clear it
+            clear_shell_session()
 
+        # Case 4: Create new session with auto-generated name
+        auto_name = generate_session_name(query) if query else None
+        sid = self.repo.create_session(self.model_config["alias"], name=auto_name)
+        self.current_session = self.repo.get_session_by_id(sid)
         return self.current_session
 
     def build_context_messages(self) -> List[Dict[str, str]]:
@@ -222,9 +432,3 @@ class SessionManager:
 
         self.repo.compact_session(self.current_session.id, compacted_content)
         return True
-
-    def end_session(self) -> None:
-        """End the current session."""
-        if self.current_session:
-            self.repo.end_session(self.current_session.id)
-            self.current_session = None

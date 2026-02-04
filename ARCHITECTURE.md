@@ -202,7 +202,10 @@ Handles LLM API communication:
 
 Manages persistent conversation sessions:
 
+- **Sessions are Persistent**: Sessions never end - they are conversation threads that can be resumed anytime
 - **Shell-Sticky Sessions**: Lock files in `/tmp/asky_session_{PID}` tie sessions to terminal instances
+- **Auto-Naming**: When creating a session, names are auto-generated from query keywords (stopword filtering)
+- **Duplicate Handling**: If multiple sessions match a name, user is prompted to select by ID
 - **Context Compaction**: When context reaches threshold (default 80%), compacts history using:
   - `summary_concat`: Concatenate existing summaries (fast)
   - `llm_summary`: LLM-generated session summary (comprehensive)
@@ -236,7 +239,7 @@ Unified storage for both history and sessions:
 - `messages`: Unified table for all messages
   - `session_id IS NULL`: History entries (stored as paired rows)
   - `session_id IS NOT NULL`: Session messages
-- `sessions`: Session metadata (id, name, model, created_at, ended_at, is_active, compacted_summary)
+- `sessions`: Session metadata (id, name, model, created_at, compacted_summary)
 
 **Key Methods:**
 - `save_interaction()`: Save query/answer as two rows

@@ -489,7 +489,7 @@ class SQLiteHistoryRepository(HistoryRepository):
         c = conn.cursor()
         timestamp = datetime.now().isoformat()
         c.execute(
-            "INSERT INTO sessions (name, model, created_at, is_active) VALUES (?, ?, ?, 1)",
+            "INSERT INTO sessions (name, model, created_at) VALUES (?, ?, ?)",
             (name, model, timestamp),
         )
         session_id = c.lastrowid
@@ -497,45 +497,68 @@ class SQLiteHistoryRepository(HistoryRepository):
         conn.close()
         return session_id
 
-    def get_active_session(self) -> Optional[Session]:
-        """Return the most recently created active session."""
+    def get_sessions_by_name(self, name: str) -> List[Session]:
+        """Return all sessions matching the given name."""
         conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute(
-            "SELECT * FROM sessions WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
+            "SELECT id, name, model, created_at, compacted_summary FROM sessions WHERE name = ? ORDER BY created_at DESC",
+            (name,),
         )
-        row = c.fetchone()
+        rows = c.fetchall()
         conn.close()
-        if row:
-            return Session(**dict(row))
-        return None
+        return [
+            Session(
+                id=r["id"],
+                name=r["name"],
+                model=r["model"],
+                created_at=r["created_at"],
+                compacted_summary=r["compacted_summary"],
+            )
+            for r in rows
+        ]
 
     def get_session_by_id(self, session_id: int) -> Optional[Session]:
         """Look up a session by ID."""
         conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+        c.execute(
+            "SELECT id, name, model, created_at, compacted_summary FROM sessions WHERE id = ?",
+            (session_id,),
+        )
         row = c.fetchone()
         conn.close()
         if row:
-            return Session(**dict(row))
+            return Session(
+                id=row["id"],
+                name=row["name"],
+                model=row["model"],
+                created_at=row["created_at"],
+                compacted_summary=row["compacted_summary"],
+            )
         return None
 
     def get_session_by_name(self, name: str) -> Optional[Session]:
-        """Look up a session by name."""
+        """Look up the most recent session by name."""
         conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute(
-            "SELECT * FROM sessions WHERE name = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, name, model, created_at, compacted_summary FROM sessions WHERE name = ? ORDER BY created_at DESC LIMIT 1",
             (name,),
         )
         row = c.fetchone()
         conn.close()
         if row:
-            return Session(**dict(row))
+            return Session(
+                id=row["id"],
+                name=row["name"],
+                model=row["model"],
+                created_at=row["created_at"],
+                compacted_summary=row["compacted_summary"],
+            )
         return None
 
     def save_message(
@@ -593,27 +616,39 @@ class SQLiteHistoryRepository(HistoryRepository):
         conn.commit()
         conn.close()
 
-    def end_session(self, session_id: int) -> None:
-        """Mark a session as completed."""
-        conn = self._get_conn()
-        c = conn.cursor()
-        timestamp = datetime.now().isoformat()
-        c.execute(
-            "UPDATE sessions SET is_active = 0, ended_at = ? WHERE id = ?",
-            (timestamp, session_id),
-        )
-        conn.commit()
-        conn.close()
-
     def list_sessions(self, limit: int) -> List[Session]:
         """List recently created sessions."""
         conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute(
-            "SELECT * FROM sessions ORDER BY created_at DESC LIMIT ?",
+            "SELECT id, name, model, created_at, compacted_summary FROM sessions ORDER BY created_at DESC LIMIT ?",
             (limit,),
         )
         rows = c.fetchall()
         conn.close()
-        return [Session(**dict(r)) for r in rows]
+        return [
+            Session(
+                id=r["id"],
+                name=r["name"],
+                model=r["model"],
+                created_at=r["created_at"],
+                compacted_summary=r["compacted_summary"],
+            )
+            for r in rows
+        ]
+
+    def get_first_message_preview(self, session_id: int, max_chars: int = 50) -> str:
+        """Get the first user message from a session for display purposes."""
+        conn = self._get_conn()
+        c = conn.cursor()
+        c.execute(
+            "SELECT content FROM messages WHERE session_id = ? AND role = 'user' ORDER BY timestamp ASC LIMIT 1",
+            (session_id,),
+        )
+        row = c.fetchone()
+        conn.close()
+        if row and row[0]:
+            content = row[0]
+            return content[:max_chars] + "..." if len(content) > max_chars else content
+        return ""

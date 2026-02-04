@@ -63,8 +63,17 @@ def create_session(model: str, name: Optional[str] = None) -> int:
     return _repo.create_session(model, name)
 
 
-def get_active_session() -> Optional[Session]:
-    return _repo.get_active_session()
+def get_sessions_by_name(name: str) -> list[Session]:
+    """Get all sessions with the given name (for duplicate handling)."""
+    return _repo.get_sessions_by_name(name)
+
+
+def get_session_by_id(session_id: int) -> Optional[Session]:
+    return _repo.get_session_by_id(session_id)
+
+
+def get_session_by_name(name: str) -> Optional[Session]:
+    return _repo.get_session_by_name(name)
 
 
 def save_message(
@@ -81,9 +90,10 @@ def compact_session(session_id: int, compacted_summary: str) -> None:
     _repo.compact_session(session_id, compacted_summary)
 
 
-def end_session(session_id: int) -> None:
-    _repo.end_session(session_id)
-
-
 def list_sessions(limit: int) -> list[Session]:
     return _repo.list_sessions(limit)
+
+
+def get_first_message_preview(session_id: int, max_chars: int = 50) -> str:
+    """Get the first user message preview from a session."""
+    return _repo.get_first_message_preview(session_id, max_chars)

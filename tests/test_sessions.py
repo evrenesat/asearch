@@ -22,6 +22,7 @@ def temp_repo(temp_db_path):
 
 
 def test_session_lifecycle(temp_repo):
+    """Test session creation, retrieval by ID/name, and listing."""
     # Create
     sid = temp_repo.create_session("model-a", name="test-ses")
     assert sid == 1
@@ -29,7 +30,7 @@ def test_session_lifecycle(temp_repo):
     # Get by ID
     s = temp_repo.get_session_by_id(sid)
     assert s.name == "test-ses"
-    assert s.is_active == 1
+    assert s.model == "model-a"
 
     # Get by Name
     s2 = temp_repo.get_session_by_name("test-ses")
@@ -38,12 +39,11 @@ def test_session_lifecycle(temp_repo):
     # List
     sessions = temp_repo.list_sessions(10)
     assert len(sessions) == 1
+    assert sessions[0].id == sid
 
-    # End
-    temp_repo.end_session(sid)
-    s_ended = temp_repo.get_session_by_id(sid)
-    assert s_ended.is_active == 0
-    assert s_ended.ended_at is not None
+    # Get all sessions by name
+    all_matches = temp_repo.get_sessions_by_name("test-ses")
+    assert len(all_matches) == 1
 
 
 def test_session_messages(temp_repo):
@@ -80,21 +80,26 @@ def test_session_manager_resume(temp_repo):
         s = mgr.start_or_resume("my-session")
         assert s.id == sid
 
-        # Resume by ID (S1)
+        # Resume by ID (S1) - legacy format
         s_id = mgr.start_or_resume("S1")
         assert s_id.id == sid
 
+        # Resume by numeric ID
+        s_num = mgr.start_or_resume("1")
+        assert s_num.id == sid
 
-def test_session_manager_auto_resume(temp_repo):
-    # Create an active session
-    sid = temp_repo.create_session("model-a")
+
+def test_session_manager_shell_resume(temp_repo):
+    """Test that session auto-resumes when shell lock file exists."""
+    sid = temp_repo.create_session("model-a", name="shell-test")
 
     with patch(
         "asky.core.session_manager.SQLiteHistoryRepository", return_value=temp_repo
     ):
-        mgr = SessionManager({"alias": "model-a", "context_size": 1000})
-        s = mgr.start_or_resume()  # Should pick active one
-        assert s.id == sid
+        with patch("asky.core.session_manager.get_shell_session_id", return_value=sid):
+            mgr = SessionManager({"alias": "model-a", "context_size": 1000})
+            s = mgr.start_or_resume()  # Should resume from lock file
+            assert s.id == sid
 
 
 def test_session_manager_build_context(temp_repo):

@@ -6,7 +6,6 @@ from rich.markdown import Markdown
 
 from asky.storage.sqlite import SQLiteHistoryRepository
 from asky.rendering import render_to_browser
-from asky.config import MODELS
 
 
 def show_session_history_command(limit: int) -> None:
@@ -24,20 +23,16 @@ def show_session_history_command(limit: int) -> None:
     table.add_column("Name", style="green")
     table.add_column("Model", style="blue")
     table.add_column("Msgs", justify="right")
-    table.add_column("Status", justify="center")
     table.add_column("Created At", style="dim")
 
     for s in sessions:
         msgs = repo.get_session_messages(s.id)
-        status = "Active" if s.is_active else "Ended"
-        status_style = "bold green" if s.is_active else "dim"
 
         table.add_row(
             str(s.id),
             s.name or "-",
             s.model,
             str(len(msgs)),
-            f"[{status_style}]{status}[/]",
             s.created_at[:16].replace("T", " "),
         )
 
@@ -106,17 +101,24 @@ def print_session_command(
 
 
 def end_session_command() -> None:
-    """End the currently active session."""
-    from asky.core import clear_shell_session
+    """Detach the current shell from its session.
 
-    repo = SQLiteHistoryRepository()
-    active = repo.get_active_session()
-    if active:
-        repo.end_session(active.id)
+    This clears the shell lock file but does NOT end the session itself.
+    Sessions are persistent and can be resumed anytime.
+    """
+    from asky.core import clear_shell_session, get_shell_session_id
+    from asky.storage import get_session_by_id
+
+    session_id = get_shell_session_id()
+    if session_id:
+        session = get_session_by_id(session_id)
         clear_shell_session()
-        print(f"Session {active.id} ({active.name or 'unnamed'}) ended.")
+        if session:
+            print(f"Detached from session {session.id} ({session.name or 'unnamed'}).")
+        else:
+            print("Detached from session.")
     else:
-        print("No active session to end.")
+        print("No session attached to this shell.")
 
 
 def handle_delete_sessions_command(args) -> bool:

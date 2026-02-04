@@ -105,6 +105,8 @@ def build_messages(
 
 def run_chat(args: argparse.Namespace, query_text: str) -> None:
     """Run the chat conversation flow."""
+    from asky.core import DuplicateSessionError, clear_shell_session
+
     # Handle Context
     context_str = ""
     if args.continue_ids:
@@ -125,23 +127,29 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
     # Explicit session start/resume
     if getattr(args, "sticky_session", None):
         session_manager = SessionManager(model_config, usage_tracker)
-        s = session_manager.start_or_resume(
-            args.sticky_session if args.sticky_session != "auto" else None
-        )
-        set_shell_session_id(s.id)
-        print(f"\n[Session {s.id} ({s.name or 'auto'}) active]")
+        try:
+            s = session_manager.start_or_resume(
+                args.sticky_session if args.sticky_session != "auto" else None,
+                query=query_text,
+            )
+            set_shell_session_id(s.id)
+            print(f"\n[Session {s.id} ({s.name or 'auto'}) active]")
+        except DuplicateSessionError as e:
+            print(f"\nMultiple sessions named '{e.name}':")
+            for sid, sname, preview in e.sessions:
+                print(f'  {sid}: {sname} - "{preview}"')
+            print(f"\nUse: asky -ss {e.sessions[0][0]} to resume a specific session.")
+            return
 
     # Auto-resume from shell lock file
     elif shell_session_id:
         session_manager = SessionManager(model_config, usage_tracker)
         session = session_manager.repo.get_session_by_id(shell_session_id)
-        if session and session.is_active:
+        if session:
             session_manager.current_session = session
             print(f"\n[Resuming session {session.id} ({session.name or 'auto'})]")
         else:
-            # Lock file points to an ended session, clear it
-            from asky.core import clear_shell_session
-
+            # Lock file points to deleted session, clear it
             clear_shell_session()
             session_manager = None
 

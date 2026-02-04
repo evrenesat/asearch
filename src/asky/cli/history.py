@@ -20,12 +20,12 @@ def show_history_command(history_arg: int) -> None:
     print("-" * 60)
     for row in rows:
         rid = row[0]
-        query = row[2]
-        query_summary = row[3]
-        answer_summary = row[4]
+        query = row[2] or ""
+        query_summary = row[3] or ""
+        answer_summary = row[4] or ""
 
         display_query = query_summary if query_summary else query
-        a_sum = answer_summary if answer_summary else ""
+        a_sum = answer_summary
 
         if len(display_query) > 50:
             display_query = display_query[:47] + "..."

@@ -1,5 +1,31 @@
 # Development Log
 
+## 2026-02-04 - Session Architecture Refactor (Persistent Sessions)
+
+**Summary**: Refactored session management to make sessions persistent conversation threads that never "end". Sessions can be resumed from any shell at any time.
+
+**Changes**:
+- **Removed `is_active`/`ended_at`** from `Session` dataclass - sessions are now permanent
+- **Removed `get_active_session()`/`end_session()`** from repository - DB no longer tracks active state
+- **Shell-Sticky Model**: Sessions are attached to shells via lock files only (`/tmp/asky_session_{PID}`)
+- **Auto-Naming**: New sessions auto-generate names from query keywords (e.g., "what is python" → "python")
+  - Added `generate_session_name()` with stopword filtering
+- **Duplicate Handling**: When resuming by name, if multiple sessions match, user gets a list with IDs and previews
+  - Added `get_sessions_by_name()` and `DuplicateSessionError`
+  - Added `get_first_message_preview()` for showing session context
+- **`-se` command now only detaches** shell from session (clears lock file), doesn't modify DB
+- **Removed Status column** from `-sH` session list output
+
+**Files Modified**:
+- `src/asky/storage/interface.py`: Session dataclass simplified
+- `src/asky/storage/sqlite.py`: Removed `end_session`, added `get_sessions_by_name`, `get_first_message_preview`
+- `src/asky/core/session_manager.py`: Added auto-naming logic, duplicate handling, shell lock file checks
+- `src/asky/cli/chat.py`: Pass query to `start_or_resume`, handle `DuplicateSessionError`
+- `src/asky/cli/sessions.py`: Simplified `end_session_command`, removed Status column
+- `tests/test_sessions.py`: Updated tests for new architecture
+
+---
+
 ## 2026-02-03 - Storage Refinement (Pure Message Model)
 
 - **Refactor**: Completed transition to a **Pure Message Model**.
