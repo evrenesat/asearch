@@ -113,6 +113,14 @@ def load_config() -> Dict[str, Any]:
 
             merge(final_config, user_config)
 
+        except tomllib.TOMLDecodeError as e:
+            import sys
+
+            print(
+                f"Error: Invalid configuration file at {config_path}", file=sys.stderr
+            )
+            print(f"Details: {e}", file=sys.stderr)
+            sys.exit(1)
         except Exception as e:
             print(f"Warning: Failed to load config from {config_path}: {e}")
 

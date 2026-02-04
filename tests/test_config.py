@@ -20,3 +20,21 @@ def test_default_context_size():
 
     assert isinstance(DEFAULT_CONTEXT_SIZE, int)
     assert DEFAULT_CONTEXT_SIZE > 0
+
+
+def test_invalid_config_exits(tmp_path):
+    """Ensure invalid TOML raises SystemExit."""
+    from unittest.mock import patch
+    from asky.config.loader import load_config
+    import pytest
+
+    # Create invalid config
+    config_dir = tmp_path / "asky"
+    config_dir.mkdir()
+    config_file = config_dir / "config.toml"
+    config_file.write_text("invalid_toml = [")
+
+    with patch("asky.config.loader._get_config_dir", return_value=config_dir):
+        with pytest.raises(SystemExit) as excinfo:
+            load_config()
+        assert excinfo.value.code == 1
