@@ -3,12 +3,51 @@
 import re
 import os
 import pyperclip
-from asky.config import USER_PROMPTS, QUERY_EXPANSION_MAX_DEPTH
+from asky.config import USER_PROMPTS, QUERY_EXPANSION_MAX_DEPTH, MAX_PROMPT_FILE_SIZE
 
 
 def clear_screen():
     """Clear the terminal screen."""
     os.system("cls" if os.name == "nt" else "clear")
+
+
+def load_custom_prompts() -> None:
+    """Read custom prompts from file path if they start with file://."""
+    for key, value in USER_PROMPTS.items():
+        if isinstance(value, str) and value.startswith("file://"):
+            file_path = value[7:]
+            path = os.path.expanduser(file_path)
+
+            if not os.path.exists(path):
+                print(f"[Warning: Custom prompt file '{path}' not found]")
+                continue
+
+            if not os.path.isfile(path):
+                print(f"[Warning: Custom prompt path '{path}' is not a file]")
+                continue
+
+            # Check file size
+            file_size = os.path.getsize(path)
+            if file_size > MAX_PROMPT_FILE_SIZE:
+                print(
+                    f"[Warning: Custom prompt file '{path}' is too large ({file_size} > {MAX_PROMPT_FILE_SIZE} bytes)]"
+                )
+                continue
+
+            if file_size == 0:
+                print(f"[Warning: Custom prompt file '{path}' is empty]")
+                continue
+
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    USER_PROMPTS[key] = content
+            except UnicodeDecodeError:
+                print(
+                    f"[Warning: Custom prompt file '{path}' is not a valid text file]"
+                )
+            except Exception as e:
+                print(f"[Warning: Error reading custom prompt file '{path}': {e}]")
 
 
 def expand_query_text(text: str, verbose: bool = False) -> str:

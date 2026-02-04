@@ -66,6 +66,9 @@ search_snippet_max_chars = 400
 # Maximum recursion depth for expanding slash commands.
 query_expansion_max_depth = 5
 
+# Maximum file size for custom prompts read from file (in bytes).
+max_prompt_file_size = 10240
+
 # LLM API retry settings
 max_retries = 10
 initial_backoff = 2

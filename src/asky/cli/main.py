@@ -205,6 +205,9 @@ def main() -> None:
     args = parse_args()
     init_db()
 
+    # Load file-based custom prompts
+    utils.load_custom_prompts()
+
     # Commands that don't require banner or query
     if args.history is not None:
         history.show_history_command(args.history)

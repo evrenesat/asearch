@@ -1,4 +1,17 @@
 
+## 2026-02-05 - File-Based Custom Prompts
+
+**Summary**: Added support for reading custom prompts from external files using the `file://` prefix in `config.toml`. Includes validation for file existence, size, and content type.
+
+**Changes**:
+- **CLI**: Added `load_custom_prompts` to `src/asky/cli/utils.py` to pre-load file content into `USER_PROMPTS`.
+- **Config**: Added `max_prompt_file_size` limit (default 10KB) to `config.toml`.
+- **Validation**: Implemented checks for file existence, size, and UTF-8 encoding.
+- **Integration**: Integrated hook into `src/asky/cli/main.py`.
+- **Tests**: Added `tests/test_file_prompts.py` with 6 new test cases.
+
+---
+
 ## 2026-02-04 - History Command UI Update
 
 **Summary**: Updated the `history` command (`-H`) to use a modern `rich.Table` output, consistent with `session-history`. Fixed data indexing bugs that caused "broken" output.
@@ -702,3 +715,13 @@ Created comprehensive [ARCHITECTURE.md](ARCHITECTURE.md) and addressed code qual
 - **Configuration**: Split `system_suffix` in `config.toml` into `search_suffix` (containing `get_url_content` instructions) and a reduced `system_suffix`.
 - **Logic**: Updated `prompts.py` to conditionally append `SEARCH_SUFFIX` only when *not* in Deep Dive mode.
 - **Verification**: Verified with reproduction script and full test suite (101 passed).
+
+## 2026-02-05 - Strict TOML Validation
+
+**Summary**: Implemented strict validation for the configuration file. The application now exits with an error if `config.toml` contains invalid TOML syntax, preventing silent failures and unexpected default behaviors.
+
+**Changes**:
+- **Loader**: Updated `src/asky/config/loader.py` to catch `tomllib.TOMLDecodeError`.
+- **Error Handling**: Prints a descriptive error message to stderr and exits with status code 1.
+- **Testing**: Added `tests/test_config.py::test_invalid_config_exits` to verify the behavior.
+- **Verification**: Verified with both manual reproduction script and automated tests.
