@@ -14,6 +14,7 @@ from asky.cli import (
 from asky.cli.sessions import handle_delete_sessions_command as handle_delete_sessions
 from asky.config import MODELS
 from asky.core import construct_system_prompt
+from asky.storage.interface import Interaction
 
 
 @pytest.fixture
@@ -76,11 +77,21 @@ def test_parse_args_options():
 @patch("asky.cli.history.get_history")
 def test_show_history(mock_get_history, capsys):
     mock_get_history.return_value = [
-        (1, "ts", "query1", "summary1", "ans_sum1", "model")
+        Interaction(
+            id=1,
+            timestamp="2026-02-04T23:54:30",
+            session_id=None,
+            role="assistant",
+            content="query1",
+            query="query1",
+            answer="ans_sum1",
+            summary="summary1",
+            model="model",
+        )
     ]
     show_history(5)
     captured = capsys.readouterr()
-    assert "Last 1 Queries:" in captured.out
+    assert "Recent History (Last 1)" in captured.out
     assert "summary1" in captured.out
     assert "ans_sum1" in captured.out
     mock_get_history.assert_called_with(5)
@@ -107,8 +118,28 @@ def test_load_context_invalid(mock_get_context, capsys):
 def test_load_context_relative_success(mock_get_context, mock_get_history):
     # Mock history: ID 5 is most recent (~1), ID 4 is ~2
     mock_get_history.return_value = [
-        (5, "ts", "q5", "s5", "a5", "m"),
-        (4, "ts", "q4", "s4", "a4", "m"),
+        Interaction(
+            id=5,
+            timestamp="ts",
+            session_id=None,
+            role="assistant",
+            content="",
+            query="q5",
+            answer="a5",
+            summary="s5",
+            model="m",
+        ),
+        Interaction(
+            id=4,
+            timestamp="ts",
+            session_id=None,
+            role="assistant",
+            content="",
+            query="q4",
+            answer="a4",
+            summary="s4",
+            model="m",
+        ),
     ]
     mock_get_context.return_value = "Context Content"
 
@@ -129,7 +160,17 @@ def test_load_context_relative_success(mock_get_context, mock_get_history):
 def test_load_context_mixed(mock_get_context, mock_get_history):
     # Mock history
     mock_get_history.return_value = [
-        (10, "ts", "q10", "s10", "a10", "m"),
+        Interaction(
+            id=10,
+            timestamp="ts",
+            session_id=None,
+            role="assistant",
+            content="",
+            query="q10",
+            answer="a10",
+            summary="s10",
+            model="m",
+        ),
     ]
     mock_get_context.return_value = "Mixed Context"
 
@@ -143,7 +184,19 @@ def test_load_context_mixed(mock_get_context, mock_get_history):
 
 @patch("asky.cli.chat.get_history")
 def test_load_context_relative_out_of_bounds(mock_get_history, capsys):
-    mock_get_history.return_value = [(1, "ts", "q", "s", "a", "m")]  # only 1 record
+    mock_get_history.return_value = [
+        Interaction(
+            id=1,
+            timestamp="ts",
+            session_id=None,
+            role="assistant",
+            content="",
+            query="q",
+            answer="a",
+            summary="s",
+            model="m",
+        )
+    ]  # only 1 record
 
     result = load_context("~5", False)
     assert result is None

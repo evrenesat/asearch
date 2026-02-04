@@ -1,6 +1,7 @@
 """History-related CLI commands for asky."""
 
 from rich.console import Console
+from rich.table import Table
 from rich.markdown import Markdown
 
 from asky.core import is_markdown
@@ -16,24 +17,47 @@ def show_history_command(history_arg: int) -> None:
     """Display recent query history."""
     limit = history_arg if history_arg > 0 else 10
     rows = get_history(limit)
-    print(f"\nLast {len(rows)} Queries:")
-    print("-" * 60)
+
+    if not rows:
+        print("No history found.")
+        return
+
+    console = Console()
+    table = Table(title=f"Recent History (Last {len(rows)})")
+    table.add_column("ID", style="cyan", justify="right")
+    table.add_column("Query", style="green")
+    table.add_column("Answer Preview", style="blue")
+    table.add_column("Model", style="dim")
+    table.add_column("Date", style="dim")
+
     for row in rows:
-        rid = row[0]
-        query = row[2] or ""
-        query_summary = row[3] or ""
-        answer_summary = row[4] or ""
+        # row is an Interaction object
+        # Use summary if available, fallback to content/query
+        display_query = row.summary if row.summary else row.query
+        if not display_query:
+            display_query = row.content
 
-        display_query = query_summary if query_summary else query
-        a_sum = answer_summary
+        display_answer = row.answer
+        if not display_answer and row.role == "assistant":
+            display_answer = row.content
 
+        # Truncate
         if len(display_query) > 50:
             display_query = display_query[:47] + "..."
-        if len(a_sum) > 50:
-            a_sum = a_sum[:47] + "..."
+        if len(display_answer) > 50:
+            display_answer = display_answer[:47] + "..."
 
-        print(f"{rid:<4} | {display_query:<50} | {a_sum:<50}")
-    print("-" * 60)
+        date_str = row.timestamp[:16].replace("T", " ")
+
+        table.add_row(
+            str(row.id),
+            display_query or "-",
+            display_answer or "-",
+            row.model or "-",
+            date_str,
+        )
+
+    console.print(table)
 
 
 def print_answers_command(

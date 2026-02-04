@@ -3,6 +3,8 @@
 import argparse
 from typing import List, Dict, Optional
 
+from rich.console import Console
+
 from asky.config import MODELS, LIVE_BANNER
 from asky.core import (
     ConversationEngine,
@@ -270,7 +272,7 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
 
             report_path = save_html_report(html_source)
             if report_path:
-                print(f"[HTML Report: file://{report_path}]")
+                Console().print(f"Open in browser: [bold cyan]file://{report_path}[/]")
 
         # Send Email if requested
         if final_answer and getattr(args, "mail_recipients", None):

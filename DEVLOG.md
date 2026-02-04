@@ -1,4 +1,16 @@
 
+## 2026-02-04 - History Command UI Update
+
+**Summary**: Updated the `history` command (`-H`) to use a modern `rich.Table` output, consistent with `session-history`. Fixed data indexing bugs that caused "broken" output.
+
+**Changes**:
+- **CLI**: Replaced plain-text history list with `rich.Table` in `src/asky/cli/history.py`.
+- **Logic**: Fixed incorrect attribute access on `Interaction` objects in `show_history_command`.
+- **Formatting**: Added truncation for long queries/answers and formatted timestamps.
+- **Tests**: Updated `tests/test_cli.py` to use `Interaction` objects in mocks and match new table title.
+
+---
+
 ## 2026-02-04 - Simplified Research (Removed Deep Modes)
 
 **Summary**: Removed Deep Dive (`-dd`) and Deep Research (`-d`) modes to simplify the codebase. Most of their functionality can be achieved via custom user prompts.
