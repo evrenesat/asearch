@@ -17,18 +17,15 @@ class Interaction:
     role: Optional[str]  # 'user' or 'assistant' for session messages, None for history
 
     # Content fields
-    content: (
-        str  # Main content (query for user, answer for assistant, or full interaction)
-    )
-    summary: Optional[str]
+    content: str = ""  # For session messages (or general message content)
+    query: str = ""  # For history interactions (User message)
+    answer: str = ""  # For history interactions (Assistant message)
 
-    # Legacy fields for history compatibility
-    query_summary: Optional[str]
-    answer_summary: Optional[str]
+    summary: Optional[str] = None
 
     # Metadata
-    model: str
-    token_count: Optional[int]
+    model: str = ""
+    token_count: Optional[int] = None
 
     def __getitem__(self, idx):
         return (
@@ -37,9 +34,9 @@ class Interaction:
             self.session_id,
             self.role,
             self.content,
+            self.query,
+            self.answer,
             self.summary,
-            self.query_summary,
-            self.answer_summary,
             self.model,
             self.token_count,
         )[idx]
@@ -52,9 +49,9 @@ class Interaction:
                 self.session_id,
                 self.role,
                 self.content,
+                self.query,
+                self.answer,
                 self.summary,
-                self.query_summary,
-                self.answer_summary,
                 self.model,
                 self.token_count,
             )

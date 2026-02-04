@@ -46,17 +46,13 @@ class SQLiteHistoryRepository(HistoryRepository):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
                 
-                -- Session fields (nullable for non-session messages)
+                -- Session fields (nullable for non-session unique messages)
                 session_id INTEGER,
-                role TEXT,
+                role TEXT NOT NULL,
                 
                 -- Content fields
                 content TEXT NOT NULL,
                 summary TEXT,
-                
-                -- Legacy fields for history compatibility
-                query_summary TEXT,
-                answer_summary TEXT,
                 
                 -- Metadata
                 model TEXT NOT NULL,
@@ -81,6 +77,7 @@ class SQLiteHistoryRepository(HistoryRepository):
             )
         """
         )
+
         conn.commit()
         conn.close()
 
@@ -92,92 +89,217 @@ class SQLiteHistoryRepository(HistoryRepository):
         query_summary: str = "",
         answer_summary: str = "",
     ) -> None:
-        """Save a query and its answer to the messages table as a single history entry."""
+        """Save a query and its answer as two separate message rows (User + Assistant)."""
         self.init_db()
         conn = self._get_conn()
         c = conn.cursor()
 
-        # For history entries, we store the full interaction in content
-        # with session_id=NULL and role=NULL
-        full_content = f"Query: {query}\n\nAnswer: {answer}"
+        timestamp = datetime.now().isoformat()
 
+        # 1. Save User Message
         c.execute(
             """INSERT INTO messages 
-            (timestamp, session_id, role, content, summary, query_summary, answer_summary, model, token_count) 
-            VALUES (?, NULL, NULL, ?, NULL, ?, ?, ?, NULL)""",
-            (
-                datetime.now().isoformat(),
-                full_content,
-                query_summary,
-                answer_summary,
-                model,
-            ),
+            (timestamp, session_id, role, content, summary, model, token_count) 
+            VALUES (?, NULL, 'user', ?, ?, ?, NULL)""",
+            (timestamp, query, query_summary, model),
         )
+
+        # 2. Save Assistant Message
+        c.execute(
+            """INSERT INTO messages 
+            (timestamp, session_id, role, content, summary, model, token_count) 
+            VALUES (?, NULL, 'assistant', ?, ?, ?, NULL)""",
+            (timestamp, answer, answer_summary, model),
+        )
+
         conn.commit()
         conn.close()
 
     def get_history(self, limit: int) -> List[Interaction]:
-        """Fetch the most recent N history records (non-session messages)."""
+        """Fetch the most recent history interactions (paired from messages)."""
         self.init_db()
         conn = self._get_conn()
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
+
+        # We need to fetch enough messages to form 'limit' pairs.
+        # Safest is to fetch limit * 2 (assuming perfect pairs) but we might have orphans.
+        # Let's fetch limit * 3 to be safe and trim later.
+        fetch_limit = limit * 3
+
         c.execute(
             """SELECT * FROM messages 
             WHERE session_id IS NULL 
-            ORDER BY timestamp DESC LIMIT ?""",
-            (limit,),
+            ORDER BY timestamp DESC, id DESC LIMIT ?""",
+            (fetch_limit,),
         )
         rows = c.fetchall()
-        results = [
-            Interaction(
-                id=r["id"],
-                timestamp=r["timestamp"],
-                session_id=r["session_id"],
-                role=r["role"],
-                content=r["content"],
-                summary=r["summary"],
-                query_summary=r["query_summary"],
-                answer_summary=r["answer_summary"],
-                model=r["model"],
-                token_count=r["token_count"],
-            )
-            for r in rows
-        ]
         conn.close()
-        return results
+
+        interactions = []
+        # Process rows in temporal order (ASC) to pair them?
+        # Rows are DESC (Newest first).
+        # Expected pattern: [Asst, User, Asst, User, ...]
+
+        i = 0
+        while i < len(rows):
+            current = rows[i]
+
+            # If we find an assistant message, look for the next one being a user message (older)
+            if current["role"] == "assistant":
+                # Check next message
+                if i + 1 < len(rows):
+                    next_msg = rows[i + 1]
+                    if next_msg["role"] == "user":
+                        # Found a pair: next_msg (User) -> current (Assistant)
+                        interactions.append(
+                            Interaction(
+                                id=current["id"],  # Use Assistant ID as Interaction ID
+                                timestamp=current["timestamp"],
+                                session_id=None,
+                                role=None,
+                                content=f"Query: {next_msg['content']}\n\nAnswer: {current['content']}",  # Legacy back-compat
+                                query=next_msg["content"],
+                                answer=current["content"],
+                                summary=current[
+                                    "summary"
+                                ],  # Summary of the interaction (usually Answer summary matters more/last)
+                                model=current["model"],
+                                token_count=None,
+                            )
+                        )
+                        i += 2
+                        continue
+
+                # Orphan assistant message? Treat as interaction with unknown query?
+                interactions.append(
+                    Interaction(
+                        id=current["id"],
+                        timestamp=current["timestamp"],
+                        session_id=None,
+                        role=None,
+                        content="",
+                        query="<unknown>",
+                        answer=current["content"],
+                        summary=current["summary"],
+                        model=current["model"],
+                        token_count=None,
+                    )
+                )
+                i += 1
+
+            elif current["role"] == "user":
+                # Orphan user message (interrupted?)
+                interactions.append(
+                    Interaction(
+                        id=current["id"],
+                        timestamp=current["timestamp"],
+                        session_id=None,
+                        role=None,
+                        content="",
+                        query=current["content"],
+                        answer="<no answer>",
+                        summary=current["summary"],
+                        model=current["model"],
+                        token_count=None,
+                    )
+                )
+                i += 1
+            else:
+                # Fallback for old legacy rows (role IS NULL)
+                # If content contains "Query:" parse it? Or just dump content to 'answer' and put query in 'query'.
+                # The old 'content' had "Query: ... Answer: ..."
+                # Let's just put it all in Answer for visibility if we can't parse.
+                # Or better: check for legacy columns? No, row factory keys depend on schema.
+                # If schema changed, old rows still return 'role' as None.
+
+                interactions.append(
+                    Interaction(
+                        id=current["id"],
+                        timestamp=current["timestamp"],
+                        session_id=None,
+                        role=None,
+                        content=current["content"],  # use content
+                        query="",
+                        answer="",
+                        summary=current["summary"] or "",
+                        model=current["model"],
+                        token_count=current["token_count"],
+                    )
+                )
+                i += 1
+
+        return interactions[:limit]
 
     def get_interaction_context(self, ids: List[int], full: bool = False) -> str:
         """Combine content from multiple interactions into a single context string."""
         self.init_db()
         conn = self._get_conn()
         c = conn.cursor()
-        placeholders = ",".join(["?"] * len(ids))
+        c = conn.cursor()
 
-        if full:
+        # Smart Expansion: Include partners for global history interactions
+        expanded_ids = set(ids)
+        if ids:
+            placeholders = ",".join(["?"] * len(ids))
             c.execute(
-                f"SELECT content FROM messages WHERE id IN ({placeholders}) ORDER BY id ASC",
+                f"SELECT id, role FROM messages WHERE id IN ({placeholders}) AND session_id IS NULL",
                 tuple(ids),
             )
-        else:
-            c.execute(
-                f"SELECT query_summary, answer_summary FROM messages WHERE id IN ({placeholders}) ORDER BY id ASC",
-                tuple(ids),
-            )
+            rows = c.fetchall()
+
+            for r in rows:
+                curr_id, role = r
+                if role == "assistant":
+                    c.execute(
+                        "SELECT id FROM messages WHERE role='user' AND id < ? AND session_id IS NULL ORDER BY id DESC LIMIT 1",
+                        (curr_id,),
+                    )
+                    partner = c.fetchone()
+                    if partner:
+                        expanded_ids.add(partner[0])
+                elif role == "user":
+                    c.execute(
+                        "SELECT id FROM messages WHERE role='assistant' AND id > ? AND session_id IS NULL ORDER BY id ASC LIMIT 1",
+                        (curr_id,),
+                    )
+                    partner = c.fetchone()
+                    if partner:
+                        expanded_ids.add(partner[0])
+
+        final_ids = sorted(list(expanded_ids))
+        if not final_ids:
+            conn.close()
+            return ""
+
+        placeholders = ",".join(["?"] * len(final_ids))
+
+        # We always fetch content now, as summaries are less structured or might be single-message
+        c.execute(
+            f"SELECT role, content, summary FROM messages WHERE id IN ({placeholders}) ORDER BY id ASC",
+            tuple(final_ids),
+        )
         rows = c.fetchall()
         conn.close()
 
         context_parts = []
         for r in rows:
+            role = r[0]
+            content = r[1]
+            summary = r[2]
+
             if full:
-                # Full content is already formatted
-                context_parts.append(r[0] if r[0] else "...")
+                context_parts.append(content if content else "...")
             else:
-                # Build from summaries
-                q = r[0] if r[0] else "..."
-                a = r[1] if r[1] else "..."
-                context_parts.append(f"Query: {q}")
-                context_parts.append(f"Answer: {a}")
+                # Use summary if available, else truncate content
+                text = (
+                    summary
+                    if summary
+                    else (content[:200] + "..." if len(content) > 200 else content)
+                )
+                prefix = "Query: " if role == "user" else "Answer: "
+                context_parts.append(f"{prefix}{text}")
+
         return "\n\n".join(context_parts)
 
     def delete_messages(
@@ -192,16 +314,23 @@ class SQLiteHistoryRepository(HistoryRepository):
 
         if delete_all:
             c.execute("DELETE FROM messages WHERE session_id IS NULL")
-        elif ids:
+            deleted_count = c.rowcount
+            conn.commit()
+            conn.close()
+            return deleted_count
+
+        if ids:
+            target_ids = []
             if "-" in ids:
                 try:
                     start_id, end_id = map(int, ids.split("-"))
                     if start_id > end_id:
                         start_id, end_id = end_id, start_id
                     c.execute(
-                        "DELETE FROM messages WHERE id BETWEEN ? AND ? AND session_id IS NULL",
+                        "SELECT id FROM messages WHERE id BETWEEN ? AND ? AND session_id IS NULL",
                         (start_id, end_id),
                     )
+                    target_ids = [r[0] for r in c.fetchall()]
                 except ValueError:
                     print(
                         f"Error: Invalid range format. Use 'start-end' (e.g., '5-10')."
@@ -210,35 +339,67 @@ class SQLiteHistoryRepository(HistoryRepository):
                     return 0
             elif "," in ids:
                 try:
-                    id_list = [int(x.strip()) for x in ids.split(",")]
-                    placeholders = ",".join(["?"] * len(id_list))
-                    c.execute(
-                        f"DELETE FROM messages WHERE id IN ({placeholders}) AND session_id IS NULL",
-                        tuple(id_list),
-                    )
+                    target_ids = [int(x.strip()) for x in ids.split(",")]
                 except ValueError:
                     print("Error: Invalid list format. Use comma-separated integers.")
                     conn.close()
                     return 0
             else:
                 try:
-                    target_id = int(ids.strip())
-                    c.execute(
-                        "DELETE FROM messages WHERE id = ? AND session_id IS NULL",
-                        (target_id,),
-                    )
+                    target_ids = [int(ids.strip())]
                 except ValueError:
                     print("Error: Invalid ID format. Use an integer.")
                     conn.close()
                     return 0
-        else:
-            conn.close()
-            return 0
 
-        deleted_count = c.rowcount
-        conn.commit()
+            # Expand partners (Smart Delete)
+            expanded_ids = set(target_ids)
+            if target_ids:
+                placeholders = ",".join(["?"] * len(target_ids))
+                c.execute(
+                    f"SELECT id, role, timestamp FROM messages WHERE id IN ({placeholders})",
+                    tuple(target_ids),
+                )
+                rows = c.fetchall()
+
+                for r in rows:
+                    curr_id, role, ts = r
+
+                    if role == "assistant":
+                        # Look for preceding user message
+                        c.execute(
+                            "SELECT id FROM messages WHERE role='user' AND id < ? AND session_id IS NULL ORDER BY id DESC LIMIT 1",
+                            (curr_id,),
+                        )
+                        partner = c.fetchone()
+                        if partner:
+                            expanded_ids.add(partner[0])
+                    elif role == "user":
+                        # Look for succeding assistant message
+                        c.execute(
+                            "SELECT id FROM messages WHERE role='assistant' AND id > ? AND session_id IS NULL ORDER BY id ASC LIMIT 1",
+                            (curr_id,),
+                        )
+                        partner = c.fetchone()
+                        if partner:
+                            expanded_ids.add(partner[0])
+
+            if expanded_ids:
+                final_list = list(expanded_ids)
+                p_holders = ",".join(["?"] * len(final_list))
+                c.execute(
+                    f"DELETE FROM messages WHERE id IN ({p_holders})", tuple(final_list)
+                )
+                deleted_count = c.rowcount
+            else:
+                deleted_count = 0
+
+            conn.commit()
+            conn.close()
+            return deleted_count
+
         conn.close()
-        return deleted_count
+        return 0
 
     def delete_sessions(
         self,
@@ -398,8 +559,8 @@ class SQLiteHistoryRepository(HistoryRepository):
         timestamp = datetime.now().isoformat()
         c.execute(
             """INSERT INTO messages 
-            (timestamp, session_id, role, content, summary, query_summary, answer_summary, model, token_count) 
-            VALUES (?, ?, ?, ?, ?, NULL, NULL, '', ?)""",
+            (timestamp, session_id, role, content, summary, model, token_count) 
+            VALUES (?, ?, ?, ?, ?, '', ?)""",
             (timestamp, session_id, role, content, summary, token_count),
         )
         conn.commit()
@@ -423,9 +584,9 @@ class SQLiteHistoryRepository(HistoryRepository):
                 session_id=r["session_id"],
                 role=r["role"],
                 content=r["content"],
+                query="",  # Not used for session view, content is primary
+                answer="",
                 summary=r["summary"],
-                query_summary=r["query_summary"],
-                answer_summary=r["answer_summary"],
                 model=r["model"],
                 token_count=r["token_count"],
             )

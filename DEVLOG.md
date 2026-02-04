@@ -1,5 +1,16 @@
 # Development Log
 
+## 2026-02-03 - Storage Refinement (Pure Message Model)
+
+- **Refactor**: Completed transition to a **Pure Message Model**.
+  - **Schema Cleanup**: Removed `query_summary` and `answer_summary` columns from the `messages` table, fully relying on the unified `summary` field.
+  - **Two-Row Storage**: Enforced strict 1-row-per-message storage for all interactions (User row + Assistant row), eliminating hybrid storage.
+  - **Smart Deletion**: Implemented intelligent deletion logic in `SQLiteHistoryRepository` that automatically identifies and deletes the corresponding partner message when a single message ID is targeted in global history.
+  - **Context Expansion**: Updated `get_interaction_context` to automatically retrieve the full conversation turn (Query + Answer) when given a single message ID.
+  - **Legacy Compatibility**: `get_history` now transparently populates the legacy `content` field (combining Query/Answer) to ensure CLI `ask -H` output remains consistent.
+  - **Testing**: Updated integration tests to reflect the new 2-row architecture (e.g., deletion counts).
+  - **Migration**: Added automated migration to convert legacy `history` tables to the new `messages` format, preserving all past interactions.
+
 ## 2026-02-03 - Conditional Summarization
 
 ### Changed

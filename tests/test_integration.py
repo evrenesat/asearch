@@ -69,7 +69,8 @@ def test_delete_messages_integration(setup_test_data, capsys):
 
         # Delete single message by ID
         count = delete_messages(ids="2")
-        assert count == 1
+        # Smart delete removes the pair (User + Assistant), so count is 2
+        assert count == 2
 
         # Delete range
         count = delete_messages(ids="1-3")
@@ -78,7 +79,7 @@ def test_delete_messages_integration(setup_test_data, capsys):
         # Add more and delete all
         save_interaction("q4", "a4", "m")
         count = delete_messages(delete_all=True)
-        assert count == 1
+        assert count == 4
 
 
 def test_delete_sessions_integration(setup_test_data):

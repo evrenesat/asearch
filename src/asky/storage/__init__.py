@@ -57,3 +57,33 @@ def delete_sessions(
 def get_db_record_count() -> int:
     """Get count using the default repository."""
     return _repo.get_db_record_count()
+
+
+def create_session(model: str, name: Optional[str] = None) -> int:
+    return _repo.create_session(model, name)
+
+
+def get_active_session() -> Optional[Session]:
+    return _repo.get_active_session()
+
+
+def save_message(
+    session_id: int, role: str, content: str, summary: str, token_count: int
+) -> None:
+    _repo.save_message(session_id, role, content, summary, token_count)
+
+
+def get_session_messages(session_id: int) -> list[Interaction]:
+    return _repo.get_session_messages(session_id)
+
+
+def compact_session(session_id: int, compacted_summary: str) -> None:
+    _repo.compact_session(session_id, compacted_summary)
+
+
+def end_session(session_id: int) -> None:
+    _repo.end_session(session_id)
+
+
+def list_sessions(limit: int) -> list[Session]:
+    return _repo.list_sessions(limit)
