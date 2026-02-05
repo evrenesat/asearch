@@ -5,10 +5,11 @@ from typing import List, Dict, Optional
 
 from rich.console import Console
 
-from asky.config import MODELS, LIVE_BANNER
+from asky.config import MODELS, LIVE_BANNER, RESEARCH_SYSTEM_PROMPT
 from asky.core import (
     ConversationEngine,
     create_default_tool_registry,
+    create_research_tool_registry,
     UsageTracker,
     construct_system_prompt,
     generate_summaries,
@@ -73,17 +74,33 @@ def load_context(continue_ids: str, summarize: bool) -> Optional[str]:
         return None
 
 
+def construct_research_system_prompt() -> str:
+    """Construct the system prompt for research mode."""
+    from datetime import datetime
+
+    current_date = datetime.now().strftime("%A, %B %d, %Y at %H:%M")
+    prompt = RESEARCH_SYSTEM_PROMPT.replace("{CURRENT_DATE}", current_date)
+    return prompt
+
+
 def build_messages(
     args: argparse.Namespace,
     context_str: str,
     query_text: str,
     session_manager: Optional[SessionManager] = None,
+    research_mode: bool = False,
 ) -> List[Dict[str, str]]:
     """Build the initial message list for the conversation."""
+    # Use research prompt if in research mode
+    if research_mode:
+        system_prompt = construct_research_system_prompt()
+    else:
+        system_prompt = construct_system_prompt()
+
     messages = [
         {
             "role": "system",
-            "content": construct_system_prompt(),
+            "content": system_prompt,
         },
     ]
 
@@ -172,13 +189,23 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
             clear_shell_session()
             session_manager = None
 
+    # Check for research mode
+    research_mode = getattr(args, "research", False)
+    if research_mode:
+        print("\n[Research mode enabled - using link extraction and RAG tools]")
+
     messages = build_messages(
-        args, context_str, query_text, session_manager=session_manager
+        args, context_str, query_text, session_manager=session_manager,
+        research_mode=research_mode
     )
 
-    registry = create_default_tool_registry(
-        usage_tracker=usage_tracker, summarization_tracker=summarization_tracker
-    )
+    # Use research registry if in research mode, otherwise default
+    if research_mode:
+        registry = create_research_tool_registry(usage_tracker=usage_tracker)
+    else:
+        registry = create_default_tool_registry(
+            usage_tracker=usage_tracker, summarization_tracker=summarization_tracker
+        )
 
     engine = ConversationEngine(
         model_config=model_config,

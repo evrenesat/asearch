@@ -29,6 +29,15 @@ from asky.tools import (
     execute_web_search,
 )
 from asky import summarization
+from asky.research.tools import (
+    execute_extract_links,
+    execute_get_link_summaries,
+    execute_get_relevant_content,
+    execute_get_full_content,
+    execute_save_finding,
+    execute_query_research_memory,
+    RESEARCH_TOOL_SCHEMAS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +309,79 @@ def create_default_tool_registry(
 
     # Register custom tools from config
     for tool_name, tool_data in CUSTOM_TOOLS.items():
+        if not tool_data.get("enabled", True):
+            continue
+        registry.register(
+            tool_name,
+            {
+                "name": tool_name,
+                "description": tool_data.get(
+                    "description", f"Custom tool: {tool_name}"
+                ),
+                "parameters": tool_data.get(
+                    "parameters", {"type": "object", "properties": {}}
+                ),
+            },
+            lambda args, name=tool_name: _execute_custom_tool(name, args),
+        )
+
+    return registry
+
+
+def create_research_tool_registry(
+    usage_tracker: Optional[UsageTracker] = None,
+) -> ToolRegistry:
+    """Create a ToolRegistry with research mode tools.
+
+    Research mode provides:
+    - web_search: Standard web search
+    - extract_links: Extract and cache links from URLs (content cached, links returned)
+    - get_link_summaries: Get AI-generated summaries of cached pages
+    - get_relevant_content: RAG-based retrieval of relevant content chunks
+    - get_full_content: Get full cached content
+
+    Plus any custom tools from config.
+    """
+    registry = ToolRegistry()
+
+    # Web search (same as default)
+    registry.register(
+        "web_search",
+        {
+            "name": "web_search",
+            "description": "Search the web and return top results. Use this to find relevant sources for your research.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string", "description": "Search query"},
+                    "count": {"type": "integer", "default": 5, "description": "Number of results"},
+                },
+                "required": ["q"],
+            },
+        },
+        execute_web_search,
+    )
+
+    # Research mode tools
+    for schema in RESEARCH_TOOL_SCHEMAS:
+        tool_name = schema["name"]
+        if tool_name == "extract_links":
+            registry.register(tool_name, schema, execute_extract_links)
+        elif tool_name == "get_link_summaries":
+            registry.register(tool_name, schema, execute_get_link_summaries)
+        elif tool_name == "get_relevant_content":
+            registry.register(tool_name, schema, execute_get_relevant_content)
+        elif tool_name == "get_full_content":
+            registry.register(tool_name, schema, execute_get_full_content)
+        elif tool_name == "save_finding":
+            registry.register(tool_name, schema, execute_save_finding)
+        elif tool_name == "query_research_memory":
+            registry.register(tool_name, schema, execute_query_research_memory)
+
+    # Register custom tools from config
+    for tool_name, tool_data in CUSTOM_TOOLS.items():
+        if not tool_data.get("enabled", True):
+            continue
         registry.register(
             tool_name,
             {

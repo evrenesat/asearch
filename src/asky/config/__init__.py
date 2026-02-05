@@ -97,6 +97,37 @@ USER_PROMPTS = _CONFIG.get("user_prompts", {})
 # Custom Tools
 CUSTOM_TOOLS = _CONFIG.get("tool", {})
 
+# Research Mode
+_research = _CONFIG.get("research", {})
+RESEARCH_ENABLED = _research.get("enabled", True)
+RESEARCH_CACHE_TTL_HOURS = _research.get("cache_ttl_hours", 24)
+RESEARCH_MAX_LINKS_PER_URL = _research.get("max_links_per_url", 50)
+RESEARCH_MAX_RELEVANT_LINKS = _research.get("max_relevant_links", 20)
+RESEARCH_CHUNK_SIZE = _research.get("chunk_size", 1000)
+RESEARCH_CHUNK_OVERLAP = _research.get("chunk_overlap", 200)
+RESEARCH_MAX_CHUNKS_PER_RETRIEVAL = _research.get("max_chunks_per_retrieval", 5)
+RESEARCH_SUMMARIZATION_WORKERS = _research.get("summarization_workers", 2)
+RESEARCH_MEMORY_MAX_RESULTS = _research.get("memory_max_results", 10)
+
+# Research Embedding Settings
+_research_embedding = _research.get("embedding", {})
+RESEARCH_EMBEDDING_API_URL = _research_embedding.get(
+    "api_url", "http://localhost:1234/v1/embeddings"
+)
+RESEARCH_EMBEDDING_MODEL = _research_embedding.get(
+    "model", "text-embedding-nomic-embed-text-v1.5"
+)
+RESEARCH_EMBEDDING_DIMENSION = _research_embedding.get("dimension", 768)
+RESEARCH_EMBEDDING_BATCH_SIZE = _research_embedding.get("batch_size", 32)
+RESEARCH_EMBEDDING_TIMEOUT = _research_embedding.get("timeout", 30)
+
+# Research Prompts
+RESEARCH_SYSTEM_PROMPT = _prompts.get("research_system", "")
+SUMMARIZE_PAGE_PROMPT = _prompts.get(
+    "summarize_page",
+    "Summarize this webpage content concisely in 2-3 sentences."
+)
+
 # Email
 _email = _CONFIG.get("email", {})
 SMTP_HOST = _email.get("smtp_host", "localhost")
