@@ -168,7 +168,8 @@ class ConversationEngine:
                 if display_callback:
                     display_callback(turn)
 
-            if turn >= MAX_TURNS:
+            # Only enter graceful exit if we hit max turns WITHOUT already having a final answer
+            if turn >= MAX_TURNS and not self.final_answer:
                 logger.info("Max turns reached. Forcing graceful exit.")
 
                 # Force a final turn to wrap up
@@ -323,6 +324,54 @@ def create_default_tool_registry(
                 ),
             },
             lambda args, name=tool_name: _execute_custom_tool(name, args),
+        )
+
+    # Register enabled push_data endpoints as LLM tools
+    from asky.push_data import execute_push_data, get_enabled_endpoints
+
+    for endpoint_name, endpoint_config in get_enabled_endpoints().items():
+        # Extract dynamic parameters from fields configuration
+        fields_config = endpoint_config.get("fields", {})
+        properties = {}
+        required = []
+
+        for key, value in fields_config.items():
+            # Skip static values, environment variables, and special variables
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                param_name = value[2:-1]
+                # Only add if it's not a special variable
+                if param_name not in {"query", "answer", "timestamp", "model"}:
+                    properties[param_name] = {
+                        "type": "string",
+                        "description": f"Value for {param_name}",
+                    }
+                    required.append(param_name)
+
+        # Create tool executor that captures endpoint_name
+        def make_push_executor(ep_name: str):
+            def push_executor(args: Dict[str, Any]) -> Dict[str, Any]:
+                # Special variables are not provided via args - they're auto-filled
+                # So we only pass the dynamic args here
+                return execute_push_data(ep_name, dynamic_args=args)
+            return push_executor
+
+        tool_name = f"push_data_{endpoint_name}"
+        description = endpoint_config.get(
+            "description", f"Push data to {endpoint_name}"
+        )
+
+        registry.register(
+            tool_name,
+            {
+                "name": tool_name,
+                "description": description,
+                "parameters": {
+                    "type": "object",
+                    "properties": properties,
+                    "required": required,
+                },
+            },
+            make_push_executor(endpoint_name),
         )
 
     return registry

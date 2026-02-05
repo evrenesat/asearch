@@ -15,18 +15,14 @@ link_extractor tool:
 
  - RAG
 
- - [] Read custom prompt from file path. 
+ - [x] Read custom prompt from file path. (DONE - 2026-02-05)
 
- - [] I want to introduce a data_push tool for making get or post request to any URLs with the final result.
+ - [x] Push Data Feature (DONE - 2026-02-05)
+   HTTP data push tool for making GET or POST requests to any URLs by model as tool use or by user as a command line tool.
+   These tools are exposed to models as a tool if they are enabled, and always available to command line to push query results to remote endpoints.
 
-
-```toml
-
-[push_data.post_to_my_blog]
-method = "post" # or get
-[push_data.post_to_my_blog.fields]
-my_field="some_content"
-my_api_key_env="MY_API_KEY"
-
-```
-
+   Implemented with:
+   - Static, environment, dynamic, and special variable field resolution
+   - CLI flags: --push-data, --push-param
+   - LLM tool registration for enabled endpoints
+   - Comprehensive test coverage

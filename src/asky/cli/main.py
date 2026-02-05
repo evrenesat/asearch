@@ -113,6 +113,19 @@ def parse_args() -> argparse.Namespace:
         help="Subject line for the email (used with --mail).",
     )
     parser.add_argument(
+        "--push-data",
+        dest="push_data_endpoint",
+        help="Push query result to a configured endpoint after query completes.",
+    )
+    parser.add_argument(
+        "--push-param",
+        dest="push_params",
+        action="append",
+        nargs=2,
+        metavar=("KEY", "VALUE"),
+        help="Dynamic parameter for --push-data. Can be repeated. Example: --push-param title 'My Title'",
+    )
+    parser.add_argument(
         "-ss",
         "--sticky-session",
         nargs="+",

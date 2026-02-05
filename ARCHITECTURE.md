@@ -100,6 +100,7 @@ src/asky/
 │   └── loader.py       # TOML loading, config merging
 ├── config.toml         # Default configuration file
 ├── tools.py            # Tool execution (web search, URL fetch, custom tools)
+├── push_data.py        # HTTP data push to external endpoints
 ├── summarization.py    # Query/answer summarization logic
 ├── html.py             # HTML stripping and link extraction
 ├── email_sender.py     # Email sending via SMTP
@@ -141,6 +142,8 @@ The CLI is modularized for maintainability:
 | `--delete-sessions` | Delete session records |
 | `-o, --open` | Open result in browser |
 | `--mail` | Send result via email |
+| `--push-data` | Push result to configured endpoint |
+| `--push-param KEY VALUE` | Dynamic parameter for push-data (repeatable) |
 
 ---
 
@@ -264,6 +267,7 @@ Unified storage for both history and sessions:
 | `[prompts]` | System prompt templates |
 | `[user_prompts]` | User-defined shortcuts (`/gn`, `/wh`) |
 | `[tool.name]` | Custom tool definitions |
+| `[push_data.name]` | HTTP endpoint definitions for data push |
 | `[session]` | Compaction threshold and strategy |
 | `[email]` | SMTP settings |
 
@@ -308,9 +312,31 @@ Execution via `subprocess.run()` with argument quoting.
 | `summarization.py` | Query/answer summarization using dedicated model |
 | `html.py` | `HTMLStripper`: Remove scripts/styles, extract links |
 | `email_sender.py` | Send results via SMTP (markdown → HTML conversion) |
+| `push_data.py` | HTTP data push to external endpoints (GET/POST) |
 | `rendering.py` | `render_to_browser()`: Open markdown in browser |
 | `banner.py` | Display CLI banner with model info |
 | `logger.py` | Configure file-based logging |
+
+#### Push Data Module (`push_data.py`)
+
+Enables pushing query results to external HTTP endpoints:
+
+**Key Functions:**
+- `execute_push_data()`: Main execution function for HTTP requests
+- `get_enabled_endpoints()`: Filter endpoints for LLM tool registration
+- `_resolve_field_value()`: Handle static/env/dynamic/special field values
+- `_build_payload()`: Construct request body from configuration
+- `_resolve_headers()`: Process headers including environment variables
+
+**Field Types:**
+- **Static**: Literal string values
+- **Environment**: Keys ending with `_env` read from environment
+- **Dynamic**: `${param}` placeholders from LLM/CLI
+- **Special**: `${query}`, `${answer}`, `${timestamp}`, `${model}`
+
+**Usage:**
+- CLI: `--push-data endpoint_name --push-param key value`
+- LLM: Registered as `push_data_{endpoint_name}` tools when `enabled=true`
 
 ---
 

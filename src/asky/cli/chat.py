@@ -309,6 +309,23 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
             email_subject = args.subject or f"asky Result: {query_text[:50]}"
             send_email(recipients, email_subject, final_answer)
 
+        # Push data to configured endpoint if requested
+        if final_answer and getattr(args, "push_data_endpoint", None):
+            from asky.push_data import execute_push_data
+
+            dynamic_args = dict(args.push_params) if args.push_params else {}
+            result = execute_push_data(
+                args.push_data_endpoint,
+                dynamic_args=dynamic_args,
+                query=query_text,
+                answer=final_answer,
+                model=args.model,
+            )
+            if result["success"]:
+                print(f"[Push data successful: {result['endpoint']} - {result['status_code']}]")
+            else:
+                print(f"[Push data failed: {result['endpoint']} - {result['error']}]")
+
     except KeyboardInterrupt:
         print("\nAborted by user.")
     except Exception as e:

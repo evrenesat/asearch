@@ -355,7 +355,7 @@ memory_max_results = 10
 api_url = "http://localhost:1234/v1/embeddings"
 
 # Model to use for embeddings (must be loaded in LM Studio)
-model = "text-embedding-nomic-embed-text-v1.5"
+model = "gaianet/text-embedding-nomic-embed-text-v1.5-embedding"
 
 # Embedding dimension (depends on model - nomic is 768)
 dimension = 768
@@ -379,4 +379,37 @@ smtp_user_env = "ASKY_SMTP_USER"
 smtp_password_env = "ASKY_SMTP_PASSWORD"
 # Default sender address (optional, defaults to smtp_user)
 from_address = ""
+
+# --- Push Data Configuration ---
+# Define HTTP endpoints to push query results to external services.
+# Each endpoint can be enabled for LLM tool use and/or CLI invocation.
+#
+# Field value types:
+#   - Static: "literal_value" - used as-is
+#   - Environment: key_env = "ENV_VAR_NAME" - read from environment variable
+#   - Dynamic: "${param}" - provided by LLM tool call or CLI --push-param
+#   - Special: "${query}", "${answer}", "${timestamp}", "${model}" - auto-filled
+#
+# Example endpoint configuration (commented out by default):
+#
+# [push_data.example_webhook]
+# url = "https://webhook.site/your-unique-id"
+# method = "post"  # "get" or "post"
+# enabled = false  # Set to true to expose as LLM tool
+# description = "Post findings to webhook"
+#
+# # Optional headers
+# [push_data.example_webhook.headers]
+# Content-Type = "application/json"
+# Authorization_env = "MY_AUTH_TOKEN"  # Read from env var
+#
+# # Request payload fields
+# [push_data.example_webhook.fields]
+# static_field = "some_value"          # Static value
+# api_key_env = "MY_API_KEY"           # From environment variable
+# title = "${title}"                   # Dynamic from LLM/CLI
+# content = "${answer}"                # Special variable (answer text)
+# query_text = "${query}"              # Special variable (query text)
+# model_used = "${model}"              # Special variable (model alias)
+# timestamp = "${timestamp}"           # Special variable (ISO timestamp)
 

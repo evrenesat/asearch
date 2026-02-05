@@ -97,6 +97,9 @@ USER_PROMPTS = _CONFIG.get("user_prompts", {})
 # Custom Tools
 CUSTOM_TOOLS = _CONFIG.get("tool", {})
 
+# Push Data Endpoints
+PUSH_DATA_ENDPOINTS = _CONFIG.get("push_data", {})
+
 # Research Mode
 _research = _CONFIG.get("research", {})
 RESEARCH_ENABLED = _research.get("enabled", True)

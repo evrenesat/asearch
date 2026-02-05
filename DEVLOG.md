@@ -1,3 +1,57 @@
+## 2026-02-05 - Push Data Feature
+
+**Summary**: Implemented HTTP data push functionality that allows pushing query results to external endpoints via GET/POST requests, both from CLI and as LLM-callable tools.
+
+**Changes**:
+- **Core Module**: Created `src/asky/push_data.py` with:
+  - Field resolution for static, environment, dynamic, and special variables
+  - Header resolution with `_env` suffix support for environment variables
+  - Payload building from configuration
+  - HTTP request execution (GET/POST)
+  - Endpoint filtering for LLM tool registration
+- **Configuration**:
+  - Added `PUSH_DATA_ENDPOINTS` to `src/asky/config/__init__.py`
+  - Added example `[push_data]` section to `config.toml` with documentation
+  - Supports field types: static literals, environment variables (key_env), dynamic parameters (${param}), and special variables (${query}, ${answer}, ${timestamp}, ${model})
+- **CLI**:
+  - Added `--push-data` flag to specify endpoint name
+  - Added `--push-param KEY VALUE` flag for dynamic parameters (repeatable)
+  - Integrated push execution in `src/asky/cli/chat.py` after answer generation
+- **LLM Tools**:
+  - Registered enabled push_data endpoints as LLM-callable tools in `src/asky/core/engine.py`
+  - Tool names formatted as `push_data_{endpoint_name}`
+  - Dynamic parameters extracted from field configuration and exposed in tool schema
+  - Special variables auto-filled during tool execution
+- **Testing**: Created comprehensive `tests/test_push_data.py` with 27 test cases covering:
+  - Field value resolution (all types)
+  - Header resolution
+  - Payload building
+  - HTTP requests (mocked)
+  - Error handling (missing params, missing endpoint, HTTP errors)
+  - Endpoint filtering for LLM tools
+
+**Usage Examples**:
+```bash
+# CLI: Push with dynamic parameters
+asky --push-data my_webhook --push-param title "My Title" "my query"
+
+# Configuration example:
+[push_data.my_webhook]
+url = "https://example.com/api"
+method = "post"
+enabled = true  # Expose to LLM as tool
+description = "Post findings to webhook"
+
+[push_data.my_webhook.fields]
+title = "${title}"           # Dynamic from CLI/LLM
+content = "${answer}"        # Special variable (auto-filled)
+query_text = "${query}"      # Special variable (auto-filled)
+api_key_env = "MY_API_KEY"   # From environment variable
+```
+
+**Follow-up**: Consider adding support for PUT/PATCH methods and request body templates for more complex payloads.
+
+---
 
 ## 2026-02-05 - Removed Force-Search Flag
 
