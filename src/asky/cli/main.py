@@ -138,6 +138,17 @@ def parse_args() -> argparse.Namespace:
         const=10,
         help="Show last N sessions (default 10).",
     )
+    parser.add_argument(
+        "-r",
+        "--research",
+        action="store_true",
+        help="Enable deep research mode with link extraction and RAG-based content retrieval.\n"
+        "In this mode, the LLM uses specialized tools:\n"
+        "  - extract_links: Discover links (content cached, only links returned)\n"
+        "  - get_link_summaries: Get AI summaries of cached pages\n"
+        "  - get_relevant_content: RAG-based retrieval of relevant sections\n"
+        "  - get_full_content: Get complete cached content",
+    )
     parser.add_argument("query", nargs="*", help="The query string")
     return parser.parse_args()
 

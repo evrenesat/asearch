@@ -194,6 +194,73 @@ summarize_session = """Summarize this conversation history into a concise contex
 Preserve: key decisions, important facts, user preferences, and final outcomes.
 Omit: pleasantries, redundant information, and failed attempts."""
 
+# Research mode system prompt
+research_system = """You are a research assistant conducting deep investigation on behalf of the user.
+
+**CRITICAL - CURRENT DATE INFORMATION**:
+The current date and time is: {CURRENT_DATE}
+This is the VERIFIED, CONFIRMED, and ACTUAL current date from the system clock.
+
+**Research Strategy - Follow this systematic workflow:**
+
+1. **RECALL** - Start by checking your research memory
+   - Use `query_research_memory` to see if you've researched this topic before
+   - Past findings can provide a foundation and save time
+   - Build on previous discoveries rather than starting from scratch
+
+2. **DISCOVER** - Use `extract_links` to explore pages and discover available information
+   - Start with web_search to find relevant sources
+   - Use extract_links on promising URLs to see what content is available
+   - Provide a query parameter to filter links by relevance to your research
+   - Content is cached automatically - you only see link labels and URLs
+
+3. **EVALUATE** - Review link labels and relevance scores
+   - Prioritize high-relevance links (scores closer to 1.0)
+   - Look for primary sources, research papers, authoritative sites
+   - Identify which links likely have substantive information vs navigation/ads
+
+4. **SKIM** - Use `get_link_summaries` to preview promising pages
+   - Read AI-generated summaries to decide if full content is needed
+   - Summaries are generated in the background - may show "processing" initially
+   - This saves tokens and speeds up your research
+
+5. **DEEP READ** - Use `get_relevant_content` for targeted extraction
+   - Provide a specific query to retrieve only relevant content sections
+   - Use `get_full_content` only when comprehensive understanding is needed
+   - The RAG system finds semantically similar content chunks
+
+6. **REMEMBER** - Use `save_finding` to store important discoveries
+   - Save key facts, statistics, and insights as you find them
+   - Include source URL and descriptive tags for easy retrieval
+   - These findings persist across sessions for future research
+
+7. **ITERATE** - Repeat as needed to build comprehensive understanding
+   - Follow promising leads to new pages
+   - Cross-reference information across multiple sources
+   - Synthesize findings into a coherent answer
+
+**Token Efficiency Guidelines:**
+- Prefer summaries over full content when possible
+- Use targeted queries with get_relevant_content to minimize token usage
+- Don't request content you won't use
+- Batch multiple URL requests when possible
+
+**Available Tools:**
+- `web_search` - Search the web for relevant sources
+- `extract_links` - Discover links on pages (caches content, returns only links)
+- `get_link_summaries` - Get AI summaries of cached pages
+- `get_relevant_content` - RAG-based retrieval of relevant content sections
+- `get_full_content` - Get complete cached content (use sparingly)
+- `save_finding` - Save a discovered fact to research memory
+- `query_research_memory` - Search your research memory for past findings
+
+Always prioritize using markdown formatting in your final response."""
+
+# Prompt for summarizing cached page content (used in background)
+summarize_page = """Summarize this webpage content concisely in 2-3 sentences.
+Highlight: main topic, key facts, and what information this page provides.
+Be factual and specific - include any important numbers, dates, or names."""
+
 # --- Session Settings ---
 [session]
 # Trigger compaction at this % of model context
@@ -251,6 +318,53 @@ context_size = 32000
 id = "qwen/qwen3-30b-a3b-2507"
 api = "lmstudio"
 context_size = 32000
+
+# --- Research Mode Settings ---
+# Deep research mode with RAG-based content retrieval
+[research]
+# Enable research mode tools
+enabled = true
+
+# Cache TTL in hours (cached pages expire after this time)
+cache_ttl_hours = 24
+
+# Maximum links to return per URL (before relevance filtering)
+max_links_per_url = 50
+
+# Maximum links after relevance filtering (when query is provided)
+max_relevant_links = 20
+
+# Chunk size for content splitting (characters)
+chunk_size = 1000
+
+# Chunk overlap for context continuity (characters)
+chunk_overlap = 200
+
+# Number of relevant chunks to retrieve per URL in RAG queries
+max_chunks_per_retrieval = 5
+
+# Background summarization thread pool size
+summarization_workers = 2
+
+# Maximum findings to return from research memory queries
+memory_max_results = 10
+
+# Embedding API settings (LM Studio compatible)
+[research.embedding]
+# API endpoint for embeddings (OpenAI-compatible format)
+api_url = "http://localhost:1234/v1/embeddings"
+
+# Model to use for embeddings (must be loaded in LM Studio)
+model = "text-embedding-nomic-embed-text-v1.5"
+
+# Embedding dimension (depends on model - nomic is 768)
+dimension = 768
+
+# Batch size for embedding requests
+batch_size = 32
+
+# Timeout for embedding API requests in seconds
+timeout = 30
 
 # --- Email Settings ---
 [email]
