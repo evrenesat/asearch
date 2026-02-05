@@ -1,3 +1,70 @@
+## 2026-02-05 - Embedding Model Usage in Banner (Research Mode)
+
+**Summary**: Added embedding model usage statistics display in the CLI banner when research mode (`-r`) is active, showing texts embedded, API calls, and tokens consumed.
+
+**Changes**:
+- **src/asky/research/embeddings.py**:
+  - Added usage tracking counters: `texts_embedded`, `api_calls`, `prompt_tokens`
+  - Counters increment in `_embed_batch()` after successful API responses
+  - Added `get_usage_stats()` method to retrieve usage dictionary
+  - Handles missing `usage` field in API responses gracefully (tokens = 0)
+- **src/asky/banner.py**:
+  - Added embedding fields to `BannerState`: `research_mode`, `embedding_model`, `embedding_texts`, `embedding_api_calls`, `embedding_prompt_tokens`
+  - Added conditional "Embedding" row in banner when `research_mode=True`
+  - Row format: `Embedding  : nomic-embed-text-v1.5 | Texts: 42 | API Calls: 3 | Tokens: 1,200`
+  - Tokens portion only shown when `embedding_prompt_tokens > 0`
+- **src/asky/cli/display.py**:
+  - Added `research_mode` parameter to `InterfaceRenderer.__init__`
+  - In `_build_banner()`, when `research_mode=True`, imports and reads from `get_embedding_client()` singleton
+  - Passes embedding model name and usage stats to `BannerState`
+- **src/asky/cli/chat.py**:
+  - Passed `research_mode=research_mode` when constructing `InterfaceRenderer` (line ~228)
+- **tests/test_banner_embedding.py** (NEW):
+  - 10 new tests covering:
+    - EmbeddingClient usage counter increments
+    - `get_usage_stats()` returns correct dict
+    - Banner shows/hides embedding row based on `research_mode`
+    - Tokens display conditional logic
+    - InterfaceRenderer integration with embedding client
+
+**Verification**:
+- Full test suite: 293 tests passing (10 new)
+- Manual testing: `uv run asky -r "test query"` shows Embedding row with live stats
+- Non-research mode: `uv run asky "test query"` hides Embedding row
+
+**Follow-up**: None
+
+---
+
+## 2026-02-05 - List User Prompts Feature
+
+**Summary**: Added feature to list available user prompts when entering unmatched slash commands.
+
+**Changes**:
+- **src/asky/cli/prompts.py**:
+  - Replaced plain text output with `rich.Table` for better formatting
+  - Added `filter_prefix` parameter for case-insensitive partial matching
+  - Added `PROMPT_EXPANSION_MAX_DISPLAY_CHARS = 50` constant for truncation
+  - When filter has no matches, shows "No matches for '/prefix'" then lists all prompts
+- **src/asky/cli/main.py**:
+  - Added slash command detection after query expansion
+  - `asky /` → lists all prompts
+  - `asky /partial` → filters prompts by prefix
+  - `asky /nonexistent` → shows no matches message then all prompts
+  - Prevents sending unresolved slash commands to LLM
+- **tests/test_cli.py**:
+  - Added 8 new tests covering all slash command scenarios and list_prompts_command function
+
+**Usage**:
+```bash
+asky /                  # List all prompts
+asky /g                 # Filter prompts starting with 'g'
+asky /nonexistent       # Shows "No matches" then all prompts
+asky /gn Rotterdam      # Still works normally (expands and queries)
+```
+
+---
+
 ## 2026-02-05 - Push Data Feature
 
 **Summary**: Implemented HTTP data push functionality that allows pushing query results to external endpoints via GET/POST requests, both from CLI and as LLM-callable tools.

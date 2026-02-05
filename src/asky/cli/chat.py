@@ -225,6 +225,7 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         summarization_tracker=summarization_tracker,
         session_manager=session_manager,
         messages=messages,
+        research_mode=research_mode,
     )
 
     # Create display callback for live banner mode

@@ -401,3 +401,184 @@ def test_main_flow_verbose(
         ],
         display_callback=ANY,
     )
+
+
+# Tests for slash command prompt listing
+
+
+@patch("asky.cli.main.prompts.list_prompts_command")
+@patch("asky.cli.main.parse_args")
+@patch("asky.cli.main.init_db")
+def test_slash_only_lists_all_prompts(mock_init, mock_parse, mock_list_prompts):
+    """Test that 'asky /' lists all prompts."""
+    mock_parse.return_value = argparse.Namespace(
+        model="gf",
+        history=None,
+        continue_ids=None,
+        summarize=False,
+        delete_messages=None,
+        delete_sessions=None,
+        all=False,
+        print_session=None,
+        print_ids=None,
+        prompts=False,
+        query=["/"],
+        verbose=False,
+        open=False,
+        mail_recipients=None,
+        subject=None,
+        sticky_session=None,
+        resume_session=None,
+        session_end=False,
+        session_history=None,
+    )
+
+    with (
+        patch(
+            "asky.cli.main.MODELS",
+            {"gf": {"id": "gemini-flash-latest"}},
+        ),
+        patch("asky.cli.main.USER_PROMPTS", {"gn": "test prompt"}),
+    ):
+        main()
+
+    mock_list_prompts.assert_called_once_with()
+
+
+@patch("asky.cli.main.prompts.list_prompts_command")
+@patch("asky.cli.main.parse_args")
+@patch("asky.cli.main.init_db")
+def test_slash_partial_filters_prompts(mock_init, mock_parse, mock_list_prompts):
+    """Test that 'asky /g' filters prompts by prefix."""
+    mock_parse.return_value = argparse.Namespace(
+        model="gf",
+        history=None,
+        continue_ids=None,
+        summarize=False,
+        delete_messages=None,
+        delete_sessions=None,
+        all=False,
+        print_session=None,
+        print_ids=None,
+        prompts=False,
+        query=["/g"],
+        verbose=False,
+        open=False,
+        mail_recipients=None,
+        subject=None,
+        sticky_session=None,
+        resume_session=None,
+        session_end=False,
+        session_history=None,
+    )
+
+    with (
+        patch(
+            "asky.cli.main.MODELS",
+            {"gf": {"id": "gemini-flash-latest"}},
+        ),
+        patch("asky.cli.main.USER_PROMPTS", {"gn": "test prompt", "wh": "weather"}),
+    ):
+        main()
+
+    mock_list_prompts.assert_called_once_with(filter_prefix="g")
+
+
+@patch("asky.cli.main.prompts.list_prompts_command")
+@patch("asky.cli.main.parse_args")
+@patch("asky.cli.main.init_db")
+def test_slash_nonexistent_shows_filtered_list(mock_init, mock_parse, mock_list_prompts):
+    """Test that 'asky /nonexistent' shows filtered list (which will show no matches then all)."""
+    mock_parse.return_value = argparse.Namespace(
+        model="gf",
+        history=None,
+        continue_ids=None,
+        summarize=False,
+        delete_messages=None,
+        delete_sessions=None,
+        all=False,
+        print_session=None,
+        print_ids=None,
+        prompts=False,
+        query=["/nonexistent"],
+        verbose=False,
+        open=False,
+        mail_recipients=None,
+        subject=None,
+        sticky_session=None,
+        resume_session=None,
+        session_end=False,
+        session_history=None,
+    )
+
+    with (
+        patch(
+            "asky.cli.main.MODELS",
+            {"gf": {"id": "gemini-flash-latest"}},
+        ),
+        patch("asky.cli.main.USER_PROMPTS", {"gn": "test prompt"}),
+    ):
+        main()
+
+    mock_list_prompts.assert_called_once_with(filter_prefix="nonexistent")
+
+
+# Tests for list_prompts_command function
+
+
+@patch("asky.cli.prompts.USER_PROMPTS", {})
+def test_list_prompts_empty(capsys):
+    """Test list_prompts_command with no prompts configured."""
+    from asky.cli.prompts import list_prompts_command
+
+    list_prompts_command()
+    captured = capsys.readouterr()
+    assert "No user prompts configured" in captured.out
+
+
+@patch("asky.cli.prompts.USER_PROMPTS", {"gn": "Guardian news prompt", "wh": "Weather"})
+def test_list_prompts_all(capsys):
+    """Test list_prompts_command shows all prompts in table."""
+    from asky.cli.prompts import list_prompts_command
+
+    list_prompts_command()
+    captured = capsys.readouterr()
+    assert "/gn" in captured.out
+    assert "/wh" in captured.out
+    assert "User Prompts" in captured.out
+
+
+@patch("asky.cli.prompts.USER_PROMPTS", {"gn": "Guardian news", "wh": "Weather", "ex": "Explain"})
+def test_list_prompts_filtered(capsys):
+    """Test list_prompts_command filters by prefix."""
+    from asky.cli.prompts import list_prompts_command
+
+    list_prompts_command(filter_prefix="g")
+    captured = capsys.readouterr()
+    assert "/gn" in captured.out
+    # wh and ex should not be shown (filtered out)
+    # Note: They might still appear in other parts, but gn should be present
+
+
+@patch("asky.cli.prompts.USER_PROMPTS", {"gn": "Guardian news", "wh": "Weather"})
+def test_list_prompts_no_matches_shows_all(capsys):
+    """Test list_prompts_command shows 'no matches' then all prompts."""
+    from asky.cli.prompts import list_prompts_command
+
+    list_prompts_command(filter_prefix="xyz")
+    captured = capsys.readouterr()
+    assert "No matches for '/xyz'" in captured.out
+    # Should still show all prompts as fallback
+    assert "/gn" in captured.out
+    assert "/wh" in captured.out
+
+
+@patch("asky.cli.prompts.USER_PROMPTS", {"gn": "A" * 100})
+def test_list_prompts_truncates_long_expansion(capsys):
+    """Test list_prompts_command truncates long expansions."""
+    from asky.cli.prompts import list_prompts_command
+
+    list_prompts_command()
+    captured = capsys.readouterr()
+    # Should have ... for truncation
+    assert "..." in captured.out

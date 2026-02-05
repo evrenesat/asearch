@@ -15,6 +15,7 @@ from asky.config import (
     ANSWER_SUMMARY_MAX_CHARS,
     LOG_LEVEL,
     LOG_FILE,
+    USER_PROMPTS,
 )
 from asky.banner import get_banner, BannerState
 from asky.logger import setup_logging
@@ -283,6 +284,23 @@ def main() -> None:
 
     # Expand query
     query_text = utils.expand_query_text(" ".join(args.query), verbose=args.verbose)
+
+    # Check for unresolved slash command
+    if query_text.startswith("/"):
+        parts = query_text.split(maxsplit=1)
+        first_part = parts[0]  # e.g., "/" or "/gn" or "/nonexistent"
+
+        if first_part == "/":
+            # Just "/" - list all prompts
+            prompts.list_prompts_command()
+            return
+
+        # Check if it's an unresolved prompt (still has / prefix after expansion)
+        prefix = first_part[1:]  # Remove leading /
+        if prefix and prefix not in USER_PROMPTS:
+            # Unresolved - show filtered list
+            prompts.list_prompts_command(filter_prefix=prefix)
+            return
 
     # Verbose config
     if args.verbose:

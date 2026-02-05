@@ -28,6 +28,7 @@ class InterfaceRenderer:
         summarization_tracker: Optional[Any] = None,
         session_manager: Optional[Any] = None,
         messages: Optional[List[Dict[str, Any]]] = None,
+        research_mode: bool = False,
     ):
         self.model_config = model_config
         self.model_alias = model_alias
@@ -35,6 +36,7 @@ class InterfaceRenderer:
         self.summarization_tracker = summarization_tracker
         self.session_manager = session_manager
         self.messages = messages or []
+        self.research_mode = research_mode
         self.console = Console()
         self.live: Optional[Live] = None
 
@@ -109,6 +111,22 @@ class InterfaceRenderer:
             )
             total_sessions = self.session_manager.repo.count_sessions()
 
+        # Embedding stats (research mode only)
+        embedding_model = None
+        embedding_texts = 0
+        embedding_api_calls = 0
+        embedding_prompt_tokens = 0
+
+        if self.research_mode:
+            from asky.research.embeddings import get_embedding_client
+
+            client = get_embedding_client()
+            embedding_model = client.model
+            stats = client.get_usage_stats()
+            embedding_texts = stats["texts_embedded"]
+            embedding_api_calls = stats["api_calls"]
+            embedding_prompt_tokens = stats["prompt_tokens"]
+
         state = BannerState(
             model_alias=self.model_alias,
             model_id=model_id,
@@ -125,6 +143,11 @@ class InterfaceRenderer:
             token_usage=self._get_combined_token_usage(),
             tool_usage=self.usage_tracker.get_tool_usage(),
             status_message=status_message,
+            research_mode=self.research_mode,
+            embedding_model=embedding_model,
+            embedding_texts=embedding_texts,
+            embedding_api_calls=embedding_api_calls,
+            embedding_prompt_tokens=embedding_prompt_tokens,
         )
 
         return get_banner(state)

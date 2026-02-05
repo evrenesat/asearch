@@ -43,6 +43,12 @@ class EmbeddingClient:
         self.model = model or RESEARCH_EMBEDDING_MODEL
         self.timeout = timeout or RESEARCH_EMBEDDING_TIMEOUT
         self.batch_size = batch_size or RESEARCH_EMBEDDING_BATCH_SIZE
+
+        # Usage tracking
+        self.texts_embedded: int = 0
+        self.api_calls: int = 0
+        self.prompt_tokens: int = 0
+
         self._initialized = True
 
         logger.debug(
@@ -83,6 +89,12 @@ class EmbeddingClient:
             response.raise_for_status()
 
             data = response.json()
+
+            # Track usage
+            self.api_calls += 1
+            self.texts_embedded += len(texts)
+            usage = data.get("usage", {})
+            self.prompt_tokens += usage.get("prompt_tokens", 0)
 
             # Handle different response formats
             if "data" in data:
@@ -142,6 +154,14 @@ class EmbeddingClient:
             return []
         count = len(data) // 4  # 4 bytes per float32
         return list(struct.unpack(f"{count}f", data))
+
+    def get_usage_stats(self) -> dict:
+        """Get current usage statistics."""
+        return {
+            "texts_embedded": self.texts_embedded,
+            "api_calls": self.api_calls,
+            "prompt_tokens": self.prompt_tokens,
+        }
 
 
 def get_embedding_client() -> EmbeddingClient:

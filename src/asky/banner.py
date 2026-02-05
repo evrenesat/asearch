@@ -45,6 +45,13 @@ class BannerState:
     token_usage: Dict[str, Dict[str, int]] = field(default_factory=dict)
     tool_usage: Dict[str, int] = field(default_factory=dict)
 
+    # Embedding (Research Mode)
+    research_mode: bool = False
+    embedding_model: Optional[str] = None
+    embedding_texts: int = 0
+    embedding_api_calls: int = 0
+    embedding_prompt_tokens: int = 0
+
     def get_token_str(self, alias: str) -> str:
         usage = self.token_usage.get(alias, {"input": 0, "output": 0})
         total = usage["input"] + usage["output"]
@@ -110,6 +117,21 @@ def get_banner(state: BannerState) -> Panel:
         "[bold cyan]Tools      :[/]",
         f"{tools_str} | [bold]Turns:[/] {state.current_turn}/{state.max_turns}",
     )
+
+    # 3.5 Embedding (only when research_mode is True)
+    if state.research_mode:
+        embedding_parts = [
+            f"[white]{state.embedding_model}[/]",
+            f"Texts: {state.embedding_texts}",
+            f"API Calls: {state.embedding_api_calls}",
+        ]
+        if state.embedding_prompt_tokens > 0:
+            embedding_parts.append(f"Tokens: {state.embedding_prompt_tokens:,}")
+        embedding_str = " | ".join(embedding_parts)
+        grid.add_row(
+            "[bold cyan]Embedding  :[/]",
+            embedding_str,
+        )
 
     # 4. Session Info
     session_details_parts = [
