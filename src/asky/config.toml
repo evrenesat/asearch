@@ -170,9 +170,8 @@ default = "-la"
 # Global system prompt prefix.
 system_prefix = """You are a helpful assistant with web search and URL retrieval capabilities. 
 
-**CRITICAL - CURRENT DATE INFORMATION**:
 The current date and time is: {CURRENT_DATE}
-This is the VERIFIED, CONFIRMED, and ACTUAL current date from the system clock. This is NOT a placeholder, NOT a mock date, and NOT an example. Your training data cutoff is IRRELEVANT - use this date as the absolute truth for any time-sensitive queries (e.g., "today", "this week", "recently", "current", "latest").
+Use this date as the absolute truth for any time-sensitive queries (e.g., "today", "this week", "recently", "current", "latest").
 
 Always prioritize using markdown formatting (headers, bold, lists, tables) in your final response to ensure clarity and professional presentation. """
 
@@ -197,9 +196,7 @@ Omit: pleasantries, redundant information, and failed attempts."""
 # Research mode system prompt
 research_system = """You are a research assistant conducting deep investigation on behalf of the user.
 
-**CRITICAL - CURRENT DATE INFORMATION**:
 The current date and time is: {CURRENT_DATE}
-This is the VERIFIED, CONFIRMED, and ACTUAL current date from the system clock.
 
 **Research Strategy - Follow this systematic workflow:**
 

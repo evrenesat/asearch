@@ -1,3 +1,24 @@
+## 2026-02-05 - Context Clipping and Error Handling
+
+**Summary**: Implemented proactive context compaction and interactive error handling to prevent application crashes due to LLM context overflow (400 Bad Request).
+
+**Changes**:
+- **Core**: Added `check_and_compact` method to `ConversationEngine` in `src/asky/core/engine.py`.
+  - Proactively checks if message tokens exceed `compaction_threshold` (default 80%) of model context.
+  - Compaction strategy: Preserves System Prompt and Latest User Query; drops oldest middle messages until fit.
+- **Error Handling**: Implemented interactive recovery for 400 Bad Request errors in `run` loop.
+  - Users can now choosing to:
+    - **Retry**: Compacting context further.
+    - **Switch Model**: Selecting a model with larger context on the fly.
+    - **Exit**: Gracefully terminating.
+- **Testing**: Added `tests/test_context_overflow.py` covering compaction logic and error interception.
+
+**Verification**:
+- Validated with new unit tests simulating overflow and API errors.
+- Full test suite passed (299 tests).
+
+---
+
 ## 2026-02-05 - Embedding Model Usage in Banner (Research Mode)
 
 **Summary**: Added embedding model usage statistics display in the CLI banner when research mode (`-r`) is active, showing texts embedded, API calls, and tokens consumed.

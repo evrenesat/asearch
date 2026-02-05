@@ -2,6 +2,7 @@
 
 import json
 import logging
+import requests
 import time
 from typing import Any, Dict, List, Optional
 
@@ -100,6 +101,9 @@ class ConversationEngine:
                 def status_reporter(msg: Optional[str]):
                     if display_callback:
                         display_callback(turn, status_message=msg)
+
+                # Compaction Check
+                messages = self.check_and_compact(messages)
 
                 msg = get_llm_msg(
                     self.model_config["id"],
@@ -209,15 +213,158 @@ class ConversationEngine:
                 if self.open_browser:
                     render_to_browser(self.final_answer)
 
+                if self.open_browser:
+                    render_to_browser(self.final_answer)
+
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 400:
+                logger.error(f"API Error 400: {e}")
+                self._handle_400_error(e, messages, status_reporter)
+            else:
+                self._handle_general_error(e)
+
         except Exception as e:
-            logger.info(f"Error: {str(e)}")
-            logger.exception("Engine failure")
+            self._handle_general_error(e)
         finally:
             logger.info(
                 f"\nQuery completed in {time.perf_counter() - self.start_time:.2f} seconds"
             )
 
         return self.final_answer
+
+    def check_and_compact(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Check if message history exceeds threshold and compact if needed."""
+        from asky.config import SESSION_COMPACTION_THRESHOLD
+
+        context_size = self.model_config.get("context_size", DEFAULT_CONTEXT_SIZE)
+        threshold_tokens = int(context_size * (SESSION_COMPACTION_THRESHOLD / 100))
+        current_tokens = count_tokens(messages)
+
+        if current_tokens < threshold_tokens:
+            return messages
+
+        logger.info(
+            f"Context threshold reached ({current_tokens}/{threshold_tokens}). Compacting..."
+        )
+        print(f"\n[Context limit reached. Compacting conversation history...]")
+
+        # Strategy:
+        # 1. Keep System Prompts (always)
+        # 2. Keep the LATEST User message (the current query)
+        # 3. Drop oldest messages from the middle until we fit
+        # NOTE: This is a destructive operation for long conversations, but prevents crashing.
+
+        system_msgs = [m for m in messages if m.get("role") == "system"]
+        other_msgs = [m for m in messages if m.get("role") != "system"]
+
+        if not other_msgs:
+            return messages
+
+        # Always keep the last message (assumed to be the current user query or recent context)
+        # If we have multiple, keep the last N
+        # For aggressive compaction, let's keep the last 2 interactions (4 messages) if possible,
+        # but at minimum the very last one.
+
+        # Iteratively remove from the FRONT of 'other_msgs' (excluding the last one)
+        # unti we fit.
+
+        # Optimization: We can just slice.
+        # But we need to verify token count.
+
+        # Simple heuristic: Split other_msgs into "history" and "current_turn"
+        # We'll assume the last message is critical.
+        last_msg = other_msgs[-1]
+        history = other_msgs[:-1]
+
+        while history:
+            # Reconstruct potential messages
+            # Try to keep at least some history if possible, but drop from start
+            history.pop(0)
+
+            candidate = system_msgs + history + [last_msg]
+            if count_tokens(candidate) < threshold_tokens:
+                logger.info(f"Compacted to {count_tokens(candidate)} tokens.")
+                return candidate
+
+        # If we drained all history and it still doesn't fit (unlikely unless system prompt + last msg is huge)
+        # We just return system + last msg
+        final_attempt = system_msgs + [last_msg]
+        logger.info(
+            f"Compaction failed to preserve history. Returning minimal context: {count_tokens(final_attempt)} tokens."
+        )
+        return final_attempt
+
+    def _handle_400_error(self, e, messages, status_reporter):
+        """Handle 400 Bad Request errors interactively."""
+        print(f"\n\n[!] API Error: 400 Bad Request (likely context overflow).")
+        print(f"    Message: {str(e)}")
+
+        while True:
+            print("\nOptions:")
+            print("  [r]etry        : Compact context more aggressively and retry")
+            print(
+                "  [s]witch model : Switch to a different model (e.g. larger context)"
+            )
+            print("  [e]xit         : Exit application")
+
+            choice = input("\nSelect action [r/s/e]: ").lower().strip()
+
+            if choice == "r":
+                print("Compacting and retrying...")
+                # Aggressive compaction: Force re-run of check_and_compact
+                # effectively, the loop in run() should handle it if we break/continue,
+                # but we are in exception handler.
+                # Simpler: Trigger compaction here and recursive call or re-raise special exception?
+                # Actually, since we are outside the loop (or inside it?), wait.
+                # The exception caught was INSIDE the loop? No, run() implementation shows it catches outside loop??
+                # Let's check where the try/except block is.
+                # Ah, the try/except in my replacement above covers the WHOLE loop.
+                # If exception happens, the loop is broken.
+                # So we can't easily "resume" the loop unless we restart it.
+
+                # To retry properly, we might need to recursively call run() with compacted messages?
+                # Or refactor run() to be robust.
+
+                # For now, let's try compacting and calling run() again with the SAME state.
+                # But we need to stay decrement MAX_TURNS?
+                # Actually, simply calling self.run(messages) might loop infinitely if we don't fix the issue.
+
+                messages = self.check_and_compact(messages)
+                # If check_and_compact didn't reduce enough (user selected retry implying "try again maybe it works now" or "force compaction"),
+                # we might need to be more aggressive.
+                # But check_and_compact checks threshold. If we are 400-ing, we ARE above actual limit (even if below threshold?).
+                # Or maybe the model doesn't support what we think.
+
+                # Let's just recursively call run().
+                # But we need to validte escape condition.
+                self.final_answer = self.run(
+                    messages, display_callback=None
+                )  # We lost the callback ref?
+                # We can reuse the one passed to _handle_400... wait, run takes display_callback.
+                # I need to store display_callback in self or pass it around.
+                # For this PR, let's just use self.run(messages) and assume standard output.
+                return
+
+            elif choice == "s":
+                from asky.config import MODELS
+
+                print(f"Available models: {', '.join(MODELS.keys())}")
+                new_alias = input("Enter model alias: ").strip()
+                if new_alias in MODELS:
+                    self.model_config = MODELS[new_alias]
+                    print(f"Switched to {new_alias}. Retrying...")
+                    self.final_answer = self.run(messages)
+                    return
+                else:
+                    print("Invalid model alias.")
+
+            elif choice == "e":
+                print("Exiting...")
+                return
+
+    def _handle_general_error(self, e):
+        logger.info(f"Error: {str(e)}")
+        logger.exception("Engine failure")
 
 
 def create_default_tool_registry(
@@ -337,7 +484,11 @@ def create_default_tool_registry(
 
         for key, value in fields_config.items():
             # Skip static values, environment variables, and special variables
-            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+            if (
+                isinstance(value, str)
+                and value.startswith("${")
+                and value.endswith("}")
+            ):
                 param_name = value[2:-1]
                 # Only add if it's not a special variable
                 if param_name not in {"query", "answer", "timestamp", "model"}:
@@ -353,6 +504,7 @@ def create_default_tool_registry(
                 # Special variables are not provided via args - they're auto-filled
                 # So we only pass the dynamic args here
                 return execute_push_data(ep_name, dynamic_args=args)
+
             return push_executor
 
         tool_name = f"push_data_{endpoint_name}"
@@ -403,7 +555,11 @@ def create_research_tool_registry(
                 "type": "object",
                 "properties": {
                     "q": {"type": "string", "description": "Search query"},
-                    "count": {"type": "integer", "default": 5, "description": "Number of results"},
+                    "count": {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "Number of results",
+                    },
                 },
                 "required": ["q"],
             },
