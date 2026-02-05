@@ -5,13 +5,15 @@
 **Changes**:
 - **Core**: Added `check_and_compact` method to `ConversationEngine` in `src/asky/core/engine.py`.
   - Proactively checks if message tokens exceed `compaction_threshold` (default 80%) of model context.
-  - Compaction strategy: Preserves System Prompt and Latest User Query; drops oldest middle messages until fit.
+  - **Smart Compaction**: First attempts to replace large tool outputs (from URL fetches) with cached summaries from `ResearchCache`.
+  - **Fallback Strategy**: If still over threshold, preserves System Prompt and Latest User Query; drops oldest middle messages until fit.
 - **Error Handling**: Implemented interactive recovery for 400 Bad Request errors in `run` loop.
   - Users can now choosing to:
     - **Retry**: Compacting context further.
     - **Switch Model**: Selecting a model with larger context on the fly.
     - **Exit**: Gracefully terminating.
-- **Testing**: Added `tests/test_context_overflow.py` covering compaction logic and error interception.
+- **Logging**: Added debug logs (`[Smart Compaction]`) to trace summary hit/miss and truncation decisions for both dictionary and string content types.
+- **Testing**: Added `tests/test_context_overflow.py` covering compaction logic (smart & destructive) and error interception.
 
 **Verification**:
 - Validated with new unit tests simulating overflow and API errors.

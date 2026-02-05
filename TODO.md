@@ -28,3 +28,8 @@ CRITICAL - Security
   - No tests for concurrent SQLite access
   - No tests for malformed LLM JSON responses
   - No tests for max turns exit path (cli/chat.py:141-176)
+
+
+
+  [ ] Delete old cacahe entries from research cache table on startup. ResearchCache.cleanup_expired()
+  [] research on file/directory

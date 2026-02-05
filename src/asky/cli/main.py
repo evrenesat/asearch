@@ -218,11 +218,29 @@ def handle_print_answer_implicit(args) -> bool:
     return False
 
 
+from asky.research.cache import ResearchCache
+
+
 def main() -> None:
     """Main entry point."""
     setup_logging(LOG_LEVEL, LOG_FILE)
     args = parse_args()
     init_db()
+
+    # Cleanup expired research cache entries
+    try:
+        ResearchCache().cleanup_expired()
+    except Exception as e:
+        # Don't fail startup if cleanup fails, just log it
+        # We need to import logger here or use the one from main scope if available
+        # But main.py doesn't have a global logger object exposed easily at top level
+        # except via setup_logging which configures root.
+        # Using a local import to avoid circular dep issues if any, or just print if valid.
+        # However, checking imports, logging IS imported.
+        # But let's just use the root logger configured by setup_logging
+        import logging
+
+        logging.getLogger(__name__).warning(f"Failed to cleanup research cache: {e}")
 
     # Load file-based custom prompts
     utils.load_custom_prompts()

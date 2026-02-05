@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from rich.console import Console
 from rich.markdown import Markdown
 
+from asky.research.cache import ResearchCache
 from asky.config import (
     DEFAULT_CONTEXT_SIZE,
     MAX_TURNS,
@@ -17,6 +18,7 @@ from asky.config import (
     ANSWER_SUMMARY_MAX_CHARS,
     SUMMARIZE_QUERY_PROMPT_TEMPLATE,
     QUERY_SUMMARY_MAX_CHARS,
+    SESSION_COMPACTION_THRESHOLD,
 )
 from asky.html import strip_think_tags
 from asky.rendering import render_to_browser
@@ -63,6 +65,7 @@ class ConversationEngine:
         self.usage_tracker = usage_tracker
         self.open_browser = open_browser
         self.session_manager = session_manager
+        self.research_cache = ResearchCache()
         self.start_time: float = 0
         self.final_answer: str = ""
 
@@ -213,9 +216,6 @@ class ConversationEngine:
                 if self.open_browser:
                     render_to_browser(self.final_answer)
 
-                if self.open_browser:
-                    render_to_browser(self.final_answer)
-
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 400:
                 logger.error(f"API Error 400: {e}")
@@ -232,10 +232,106 @@ class ConversationEngine:
 
         return self.final_answer
 
+    def _compact_tool_message(self, msg: Dict[str, Any]) -> Dict[str, Any]:
+        """Replace full URL content with summaries in a tool message.
+
+        Args:
+            msg: The tool message to compact.
+
+        Returns:
+            The compacted message (or original if no compaction possible).
+        """
+        if msg.get("role") != "tool":
+            return msg
+
+        content_str = msg.get("content", "")
+        if not content_str:
+            return msg
+
+        try:
+            # Tool responses, if they are Dicts, are usually JSON strings
+            data = json.loads(content_str)
+            if not isinstance(data, dict):
+                return msg
+        except json.JSONDecodeError:
+            return msg
+
+        # Check if keys are URLs and content is huge
+        compacted_data = {}
+        modified = False
+
+        for key, value in data.items():
+            # Heuristic: Key looks like URL
+            is_url = key.startswith("http") or key.startswith("https")
+
+            # Case 1: Value is a dict with 'content' (e.g. get_full_content)
+            if isinstance(value, dict) and "content" in value and is_url:
+                summary_info = self.research_cache.get_summary(key)
+                if summary_info and summary_info.get("summary"):
+                    logger.debug(
+                        f"[Smart Compaction] Found summary for URL {key} (dict). Replacing content."
+                    )
+                    # Replace full content with summary
+                    compacted_data[key] = value.copy()
+                    compacted_data[key]["content"] = (
+                        f"[COMPACTED] {summary_info['summary']}"
+                    )
+                    compacted_data[key]["note"] = (
+                        "Content replaced with summary to save context."
+                    )
+                    modified = True
+                else:
+                    # Fallback: Truncate
+                    val_content = value.get("content", "")
+                    if len(val_content) > 500:
+                        logger.debug(
+                            f"[Smart Compaction] No summary for URL {key} (dict). Truncating content > 500 chars."
+                        )
+                        compacted_data[key] = value.copy()
+                        compacted_data[key]["content"] = (
+                            val_content[:500] + "... [TRUNCATED]"
+                        )
+                        compacted_data[key]["note"] = (
+                            "Content truncated to save context."
+                        )
+                        modified = True
+                    else:
+                        compacted_data[key] = value
+
+            # Case 2: Value is a string (e.g. get_url_content) AND key is URL
+            elif isinstance(value, str) and is_url:
+                # Can we look up summary for this URL?
+                # Ideally yes if it's in cache.
+                summary_info = self.research_cache.get_summary(key)
+                if summary_info and summary_info.get("summary"):
+                    logger.debug(
+                        f"[Smart Compaction] Found summary for URL {key} (str). Replacing content."
+                    )
+                    compacted_data[key] = f"[COMPACTED] {summary_info['summary']}"
+                    modified = True
+                else:
+                    if len(value) > 500:
+                        logger.debug(
+                            f"[Smart Compaction] No summary for URL {key} (str). Truncating content > 500 chars."
+                        )
+                        compacted_data[key] = value[:500] + "... [TRUNCATED]"
+                        modified = True
+                    else:
+                        compacted_data[key] = value
+
+            else:
+                # Keep as is
+                compacted_data[key] = value
+
+        if modified:
+            new_msg = msg.copy()
+            new_msg["content"] = json.dumps(compacted_data)
+            return new_msg
+
+        return msg
+
     def check_and_compact(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Check if message history exceeds threshold and compact if needed."""
-        from asky.config import SESSION_COMPACTION_THRESHOLD
-
         context_size = self.model_config.get("context_size", DEFAULT_CONTEXT_SIZE)
         threshold_tokens = int(context_size * (SESSION_COMPACTION_THRESHOLD / 100))
         current_tokens = count_tokens(messages)
@@ -248,11 +344,28 @@ class ConversationEngine:
         )
         print(f"\n[Context limit reached. Compacting conversation history...]")
 
-        # Strategy:
-        # 1. Keep System Prompts (always)
-        # 2. Keep the LATEST User message (the current query)
-        # 3. Drop oldest messages from the middle until we fit
-        # NOTE: This is a destructive operation for long conversations, but prevents crashing.
+        # Phase 1: Smart Compaction (Non-destructive to message count)
+        # Scan for tool messages and try to replace content with summaries
+        smart_compacted_messages = []
+        for m in messages:
+            if m.get("role") == "tool":
+                smart_compacted_messages.append(self._compact_tool_message(m))
+            else:
+                smart_compacted_messages.append(m)
+
+        # Re-check tokens
+        new_tokens = count_tokens(smart_compacted_messages)
+        if new_tokens < threshold_tokens:
+            logger.info(
+                f"Smart compaction successful. Reduced from {current_tokens} to {new_tokens}"
+            )
+            print(f"[Compaction successful using summaries]")
+            return smart_compacted_messages
+
+        # Phase 2: Destructive Compaction (Drop messages)
+        # If smart compaction wasn't enough, we must drop messages.
+        # We work with the ALREADY smart-compacted list to save as much as possible.
+        messages = smart_compacted_messages
 
         system_msgs = [m for m in messages if m.get("role") == "system"]
         other_msgs = [m for m in messages if m.get("role") != "system"]
@@ -261,33 +374,16 @@ class ConversationEngine:
             return messages
 
         # Always keep the last message (assumed to be the current user query or recent context)
-        # If we have multiple, keep the last N
-        # For aggressive compaction, let's keep the last 2 interactions (4 messages) if possible,
-        # but at minimum the very last one.
-
-        # Iteratively remove from the FRONT of 'other_msgs' (excluding the last one)
-        # unti we fit.
-
-        # Optimization: We can just slice.
-        # But we need to verify token count.
-
-        # Simple heuristic: Split other_msgs into "history" and "current_turn"
-        # We'll assume the last message is critical.
         last_msg = other_msgs[-1]
         history = other_msgs[:-1]
 
         while history:
-            # Reconstruct potential messages
-            # Try to keep at least some history if possible, but drop from start
             history.pop(0)
-
             candidate = system_msgs + history + [last_msg]
             if count_tokens(candidate) < threshold_tokens:
                 logger.info(f"Compacted to {count_tokens(candidate)} tokens.")
                 return candidate
 
-        # If we drained all history and it still doesn't fit (unlikely unless system prompt + last msg is huge)
-        # We just return system + last msg
         final_attempt = system_msgs + [last_msg]
         logger.info(
             f"Compaction failed to preserve history. Returning minimal context: {count_tokens(final_attempt)} tokens."
