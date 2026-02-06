@@ -21,6 +21,10 @@ answer_summary_max_chars = 200
 # If query length is below this, it's used as is.
 continue_query_threshold = 160
 
+# Number of lines of terminal context to fetch and prepend to the query.
+# Defaults to 10 lines. Can be overridden via -tl flag.
+terminal_context_lines = 10
+
 # URL of your SearXNG instance.
 searxng_url = "http://localhost:8888"
 

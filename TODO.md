@@ -30,5 +30,5 @@ CRITICAL - Security
 
 
 
-  [ ] Delete old cacahe entries from research cache table on startup. ResearchCache.cleanup_expired()
-  [] research on file/directory
+  [ ] thin version of banner: 1 and 2 line versions.
+  [] research on file/directory: done, needs testing.

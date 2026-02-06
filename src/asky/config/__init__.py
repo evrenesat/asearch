@@ -13,6 +13,7 @@ _CONFIG = load_config()
 _gen = _CONFIG["general"]
 QUERY_SUMMARY_MAX_CHARS = _gen["query_summary_max_chars"]
 CONTINUE_QUERY_THRESHOLD = _gen.get("continue_query_threshold", 160)
+TERMINAL_CONTEXT_LINES = _gen.get("terminal_context_lines", 10)
 ANSWER_SUMMARY_MAX_CHARS = _gen["answer_summary_max_chars"]
 SEARXNG_URL = _gen["searxng_url"]
 MAX_TURNS = _gen["max_turns"]
@@ -128,8 +129,7 @@ RESEARCH_EMBEDDING_TIMEOUT = _research_embedding.get("timeout", 30)
 # Research Prompts
 RESEARCH_SYSTEM_PROMPT = _prompts.get("research_system", "")
 SUMMARIZE_PAGE_PROMPT = _prompts.get(
-    "summarize_page",
-    "Summarize this webpage content concisely in 2-3 sentences."
+    "summarize_page", "Summarize this webpage content concisely in 2-3 sentences."
 )
 
 # Email

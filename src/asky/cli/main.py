@@ -163,6 +163,13 @@ def parse_args() -> argparse.Namespace:
         "  - get_relevant_content: RAG-based retrieval of relevant sections\n"
         "  - get_full_content: Get complete cached content",
     )
+    parser.add_argument(
+        "-tl",
+        "--terminal-lines",
+        nargs="?",
+        const="__default__",
+        help="Include the last N lines of terminal context in the query (default 10 if flag used without value).",
+    )
     parser.add_argument("query", nargs="*", help="The query string")
     return parser.parse_args()
 
@@ -281,6 +288,26 @@ def main() -> None:
     if args.prompts:
         prompts.list_prompts_command()
         return
+
+    # Handle terminal lines argument
+    # (Checking before query check because it might modify args.query)
+    from asky.config import TERMINAL_CONTEXT_LINES
+
+    if args.terminal_lines is not None:
+        if args.terminal_lines == "__default__":
+            # Flag used without value -> use config default
+            args.terminal_lines = TERMINAL_CONTEXT_LINES
+        else:
+            # Value provided, check if integer
+            try:
+                val = int(args.terminal_lines)
+                args.terminal_lines = val
+            except ValueError:
+                # Not an integer, treat as part of query
+                # Push back to query list
+                args.query.insert(0, args.terminal_lines)
+                # Set terminal lines to default since flag was present
+                args.terminal_lines = TERMINAL_CONTEXT_LINES
 
     # From here on, we need a query
     if not args.query and not any(

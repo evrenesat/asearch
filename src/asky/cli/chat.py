@@ -129,8 +129,6 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         if context_str is None:
             return
 
-    messages = build_messages(args, context_str, query_text)
-
     # Initialize Components
     usage_tracker = UsageTracker()
     summarization_tracker = UsageTracker()
@@ -195,9 +193,33 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
         print("\n[Research mode enabled - using link extraction and RAG tools]")
 
     messages = build_messages(
-        args, context_str, query_text, session_manager=session_manager,
-        research_mode=research_mode
+        args,
+        context_str,
+        query_text,
+        session_manager=session_manager,
+        research_mode=research_mode,
     )
+
+    # Handle Terminal Context
+    # Check if requested via flag OR configured default
+    from asky.config import TERMINAL_CONTEXT_LINES
+
+    # Determine effective lines count
+    if args.terminal_lines is not None:
+        lines_count = args.terminal_lines
+    else:
+        lines_count = TERMINAL_CONTEXT_LINES
+
+    if lines_count > 0:
+        from asky.cli.terminal import inject_terminal_context
+
+        # Warn if the flag was explicitly provided but failed.
+        # Note: args.terminal_lines is None if not provided (so logic uses config default).
+        # If it IS provided (even as 0? No, 0 check handles that), we want to warn.
+        warn_on_error = args.terminal_lines is not None
+        inject_terminal_context(
+            messages, lines_count, verbose=args.verbose, warn_on_error=warn_on_error
+        )
 
     # Use research registry if in research mode, otherwise default
     if research_mode:
@@ -323,7 +345,9 @@ def run_chat(args: argparse.Namespace, query_text: str) -> None:
                 model=args.model,
             )
             if result["success"]:
-                print(f"[Push data successful: {result['endpoint']} - {result['status_code']}]")
+                print(
+                    f"[Push data successful: {result['endpoint']} - {result['status_code']}]"
+                )
             else:
                 print(f"[Push data failed: {result['endpoint']} - {result['error']}]")
 

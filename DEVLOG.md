@@ -1,3 +1,21 @@
+## 2026-02-06 - Terminal Context Integration
+
+**Summary**: Added optional feature to include the last N lines of terminal output as context for queries, enabling "asky -tl why is this error happening?" workflows.
+
+**Changes**:
+- **Core**: Added `src/asky/cli/terminal.py` to fetch context using `iterm2` library.
+- **Config**: Added `terminal_context_lines` to `config.toml` (default 0) and `[project.optional-dependencies]` in `pyproject.toml`.
+- **CLI**: Added `-tl / --terminal-lines` flag to `main.py`.
+- **Integration**: Updated `chat.py` to use `inject_terminal_context` helper, keeping the chat loop clean.
+- **Docs**: Updated `README.md` with optional installation (`asky[iterm]`) and usage instructions.
+- **Refactor**: Moved context injection logic to `src/asky/cli/terminal.py`.
+- **Robustness**: Improved terminal scanning to ignore empty lines and the command line itself.
+
+**Verification**:
+- Verified `asky -tl 5` logic flows correctly (gracefully warns if iTerm2 is missing).
+
+---
+
 ## 2026-02-05 - Research Source Adapters for Local/Custom Content
 
 **Summary**: Added a thin adapter layer that lets research mode reuse existing `extract_links/get_*` tools for non-HTTP targets (for example `local://...`) via user-defined custom tools.

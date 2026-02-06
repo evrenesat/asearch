@@ -41,7 +41,25 @@ Or install from source:
 pip install -e .
 ```
 
+To enable optional feature iTerm2 context integration:
+
+```bash
+pip install "asky-cli[iterm]"
+```
+
+Or if you are using `uv`:
+
+```bash
+uv tool install "asky-cli[iterm]"
+# or from source
+uv tool install -e ".[iterm]"
+```
+
+
 ## Usage
+
+> [!NOTE]
+> **asky is powerful**: These examples are weak! Better examples and documentation are coming soon!
 
 ```
 
@@ -81,10 +99,6 @@ Query completed in 3.88 seconds
 
 --------------------------------------------------------------------------------
 ➜  ~ asky --help
-usage: asky [-h] [-m {gf,glmair,glmflash,q34t,q34,lfm,q8,q30,onano,omini,qwenmax,qwenflash,qnext,nna3b,p4mini,On3b,Ogpt20,Ol370,Ogfl,gfl}] [-c CONTINUE_IDS] [-s]
-            [--delete-messages [DELETE_MESSAGES]] [--delete-sessions [DELETE_SESSIONS]] [--all] [-H [HISTORY]] [-pa PRINT_IDS] [-ps PRINT_SESSION] [-p] [-v] [-o]
-            [--mail MAIL_RECIPIENTS] [--subject SUBJECT] [-ss STICKY_SESSION [STICKY_SESSION ...]] [-rs RESUME_SESSION [RESUME_SESSION ...]] [-se] [-sh [SESSION_HISTORY]]
-            [query ...]
 
 Tool-calling CLI with model selection.
 
@@ -93,17 +107,17 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -m, --model {gf,list,of,configured,models}
+  -m, --model {gf,glmair,glmflash,q34t,q34,lfm,q8,q30,onano,omini,qwenmax,qwenflash,qnext,nna3b,p4mini,On3b,Ogpt20,Ol370,Ogfl,gfl}
                         Select the model alias
   -c, --continue-chat CONTINUE_IDS
                         Continue conversation with context from specific history IDs (comma-separated, e.g. '1,2').
   -s, --summarize       Enable summarize mode (summarizes URL content and uses summaries for chat context)
-  --delete-messages [DELETE_MESSAGES]
+  --delete-messages [ID|ID-ID|ID,ID]
                         Delete message history records. usage: --delete-messages [ID|ID-ID|ID,ID] or --delete-messages --all
-  --delete-sessions [DELETE_SESSIONS]
+  --delete-sessions [ID|ID-ID|ID,ID]
                         Delete session records and their messages. usage: --delete-sessions [ID|ID-ID|ID,ID] or --delete-sessions --all
   --all                 Used with --delete-messages or --delete-sessions to delete ALL records.
-  -H, --history [HISTORY]
+  -H, --history [N]
                         Show last N queries and answer summaries (default 10).
                         Use with --print-answer to print the full answer(s).
   -pa, --print-answer PRINT_IDS
@@ -116,13 +130,25 @@ options:
   --mail MAIL_RECIPIENTS
                         Send the final answer via email to comma-separated addresses.
   --subject SUBJECT     Subject line for the email (used with --mail).
-  -ss, --sticky-session STICKY_SESSION [STICKY_SESSION ...]
+  --push-data PUSH_DATA_ENDPOINT
+                        Push query result to a configured endpoint after query completes.
+  --push-param KEY VALUE
+                        Dynamic parameter for --push-data. Can be repeated. Example: --push-param title 'My Title'
+  -ss, --sticky-session Session Name
                         Create and activate a new named session (then exits). Usage: -ss My Session Name
-  -rs, --resume-session RESUME_SESSION [RESUME_SESSION ...]
+  -rs, --resume-session Session Name, Session ID
                         Resume an existing session by ID or name (partial match supported).
   -se, --session-end    End the current active session
-  -sh, --session-history [SESSION_HISTORY]
+  -sh, --session-history [N]
                         Show last N sessions (default 10).
+  -r, --research        Enable deep research mode with link extraction and RAG-based content retrieval.
+                        In this mode, the LLM uses specialized tools:
+                          - extract_links: Discover links (content cached, only links returned)
+                          - get_link_summaries: Get AI summaries of cached pages
+                          - get_relevant_content: RAG-based retrieval of relevant sections
+                          - get_full_content: Get complete cached content
+  -tl, --terminal-lines [TERMINAL_LINES]
+                        Include the last N lines of terminal context in the query (default 10 if flag used without value).
 ```
 
 **Deep research mode** (encourages model to perform multiple searches)
@@ -152,6 +178,25 @@ Followin model definitions ship with default config.toml, but you can add any nu
 - `q30` - Qwen3 30B
 - `q34` - Qwen3 4B
 - `q34t` - Qwen3 4B Thinking
+
+
+
+## Optional Features
+
+### Terminal Context Integration
+This feature allows you to include the last N lines of your terminal screen as context for your query. Useful when you want to ask "why am I getting this error?".
+
+- **Installation**: Requires `iterm` optional dependency.
+- **Usage**: Add `-tl` or `--terminal-lines` flag. The default value is 10.
+  ```bash
+  asky -tl 5 why am I getting this error
+  ```
+- **Configuration**: You can modify `terminal_context_lines` in `config.toml` to set a different default value.
+> [!NOTE]
+> This feature requires iTerm2 Python API, you can enable it from iTerm2 settings.
+
+<img src="https://github.com/evrenesat/asky/raw/main/assets/iterm_config.png" alt="iterm config" width="400">
+
 
 ## Custom Tools
 

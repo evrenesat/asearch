@@ -38,6 +38,7 @@ def mock_args():
         resume_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
         query=["test", "query"],
     )
 
@@ -69,6 +70,38 @@ def test_parse_args_options():
         assert args.history == 20
         assert args.continue_ids == "1,2"
         assert args.summarize is True
+
+
+def test_parse_args_terminal_lines_explicit():
+    """Test -tl with explicit integer."""
+    with patch("sys.argv", ["asky", "-tl", "20", "query"]):
+        args = parse_args()
+        # The logic to convert args.terminal_lines happens in main(), not parse_args()
+        # parse_args just returns the raw value.
+        # Wait, the logic I added IS in main().
+        # So I should test main or extract that logic?
+        # The logic is in main() before run_chat. I should probably move it to utils or a helper
+        # to make it testable, or test main() logic mocking run_chat.
+        assert args.terminal_lines == "20"
+        assert args.query == ["query"]
+
+
+def test_parse_args_terminal_lines_default():
+    """Test -tl without value (uses const)."""
+    # Note: If we just pass "-tl", query is empty list.
+    with patch("sys.argv", ["asky", "-tl"]):
+        args = parse_args()
+        assert args.terminal_lines == "__default__"
+        assert args.query == []
+
+
+def test_parse_args_terminal_lines_mixed_query():
+    """Test -tl with non-integer (should be treated as query in main logic)."""
+    with patch("sys.argv", ["asky", "-tl", "why", "is", "this"]):
+        args = parse_args()
+        # In parse_args, it consumes 'why' as value because nargs='?'
+        assert args.terminal_lines == "why"
+        assert args.query == ["is", "this"]
 
 
 @patch("asky.cli.history.get_history")
@@ -292,9 +325,21 @@ def test_handle_print_answer_implicit_fail():
 @patch("asky.cli.chat.ConversationEngine.run")
 @patch("asky.cli.chat.generate_summaries")
 @patch("asky.cli.chat.save_interaction")
+@patch("asky.cli.main.ResearchCache")
+@patch("asky.cli.terminal.get_terminal_context")
 def test_main_flow(
-    mock_save, mock_gen_sum, mock_run, mock_db_count, mock_init, mock_parse
+    mock_get_term,
+    mock_research_cache,
+    mock_save,
+    mock_gen_sum,
+    mock_run,
+    mock_db_count,
+    mock_init,
+    mock_parse,
 ):
+    # Mock terminal context to prevent iTerm2 connection attempts in tests
+    mock_get_term.return_value = ""
+
     mock_parse.return_value = argparse.Namespace(
         model="gf",
         history=None,
@@ -314,6 +359,7 @@ def test_main_flow(
         sticky_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
     )
     mock_run.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
@@ -346,7 +392,11 @@ def test_main_flow(
 @patch("asky.cli.chat.generate_summaries")
 @patch("asky.cli.chat.save_interaction")
 @patch("asky.cli.utils.os.environ.get")
+@patch("asky.cli.main.ResearchCache")
+@patch("asky.cli.terminal.get_terminal_context")
 def test_main_flow_verbose(
+    mock_get_term,
+    mock_research_cache,
     mock_env_get,
     mock_save,
     mock_gen_sum,
@@ -356,6 +406,8 @@ def test_main_flow_verbose(
     mock_parse,
     capsys,
 ):
+    # Mock terminal context to prevent iTerm2 connection attempts in tests
+    mock_get_term.return_value = "Mocked Terminal Context"
     mock_env_get.return_value = "fake_key_123456789"
     mock_parse.return_value = argparse.Namespace(
         model="gf",
@@ -376,6 +428,7 @@ def test_main_flow_verbose(
         sticky_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
     )
     mock_run.return_value = "Final Answer"
     mock_gen_sum.return_value = ("q_sum", "a_sum")
@@ -397,7 +450,10 @@ def test_main_flow_verbose(
     mock_run.assert_called_once_with(
         [
             {"role": "system", "content": ANY},
-            {"role": "user", "content": "test"},
+            {
+                "role": "user",
+                "content": "Terminal Context (Last 10 lines):\n```\nMocked Terminal Context\n```\n\nQuery:\ntest",
+            },
         ],
         display_callback=ANY,
     )
@@ -431,6 +487,7 @@ def test_slash_only_lists_all_prompts(mock_init, mock_parse, mock_list_prompts):
         resume_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
     )
 
     with (
@@ -470,6 +527,7 @@ def test_slash_partial_filters_prompts(mock_init, mock_parse, mock_list_prompts)
         resume_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
     )
 
     with (
@@ -484,10 +542,126 @@ def test_slash_partial_filters_prompts(mock_init, mock_parse, mock_list_prompts)
     mock_list_prompts.assert_called_once_with(filter_prefix="g")
 
 
+@patch("asky.cli.main.parse_args")
+@patch("asky.cli.main.init_db")
+@patch("asky.cli.main.get_db_record_count")
+@patch("asky.cli.chat.ConversationEngine.run")
+@patch("asky.cli.chat.generate_summaries")
+@patch("asky.cli.chat.save_interaction")
+@patch("asky.cli.terminal.get_terminal_context")
+def test_main_terminal_lines_logic(
+    mock_get_term,
+    mock_save,
+    mock_gen_sum,
+    mock_run,
+    mock_db_count,
+    mock_init,
+    mock_parse,
+):
+    # Setup mocks
+    mock_get_term.return_value = ""
+    mock_run.return_value = "Answer"
+    mock_gen_sum.return_value = ("q", "a")
+
+    # Helper to run main with specific args and return effective terminal_lines
+    # Since main() calls run_chat(args, query), we can inspect args passed to run_chat
+
+    with patch("asky.cli.chat.run_chat") as mock_run_chat:
+        # Case 1: -tl explicit integer
+        mock_parse.return_value = argparse.Namespace(
+            model="gf",
+            history=None,
+            continue_ids=None,
+            summarize=False,
+            delete_messages=None,
+            delete_sessions=None,
+            all=False,
+            print_session=None,
+            print_ids=None,
+            prompts=False,
+            verbose=False,
+            open=False,
+            mail_recipients=None,
+            subject=None,
+            sticky_session=None,
+            resume_session=None,
+            session_end=False,
+            session_history=None,
+            terminal_lines=20,  # argparse converts int
+            query=["query"],
+        )
+        main()
+        args, _ = mock_run_chat.call_args
+        assert args[0].terminal_lines == 20
+        assert args[1] == "query"
+
+        # Case 2: -tl default (flag without value)
+        mock_parse.return_value = argparse.Namespace(
+            model="gf",
+            history=None,
+            continue_ids=None,
+            summarize=False,
+            delete_messages=None,
+            delete_sessions=None,
+            all=False,
+            print_session=None,
+            print_ids=None,
+            prompts=False,
+            verbose=False,
+            open=False,
+            mail_recipients=None,
+            subject=None,
+            sticky_session=None,
+            resume_session=None,
+            session_end=False,
+            session_history=None,
+            terminal_lines="__default__",  # argparse const
+            query=["query"],
+        )
+        main()
+        args, _ = mock_run_chat.call_args
+        # Should be converted to config default (mocked as 10 usually)
+        # We need to ensure we know what config returns.
+        # By default config loader returns 10 now.
+        assert args[0].terminal_lines == 10
+
+        # Case 3: -tl mixed (string treated as query)
+        mock_parse.return_value = argparse.Namespace(
+            model="gf",
+            history=None,
+            continue_ids=None,
+            summarize=False,
+            delete_messages=None,
+            delete_sessions=None,
+            all=False,
+            print_session=None,
+            print_ids=None,
+            prompts=False,
+            verbose=False,
+            open=False,
+            mail_recipients=None,
+            subject=None,
+            sticky_session=None,
+            resume_session=None,
+            session_end=False,
+            session_history=None,
+            terminal_lines="why",  # parsed as string
+            query=["is", "this"],
+        )
+        main()
+        args, _ = mock_run_chat.call_args
+        # Should set terminal lines to default (10)
+        # And prepend "why" to query
+        assert args[0].terminal_lines == 10
+        assert args[1] == "why is this"
+
+
 @patch("asky.cli.main.prompts.list_prompts_command")
 @patch("asky.cli.main.parse_args")
 @patch("asky.cli.main.init_db")
-def test_slash_nonexistent_shows_filtered_list(mock_init, mock_parse, mock_list_prompts):
+def test_slash_nonexistent_shows_filtered_list(
+    mock_init, mock_parse, mock_list_prompts
+):
     """Test that 'asky /nonexistent' shows filtered list (which will show no matches then all)."""
     mock_parse.return_value = argparse.Namespace(
         model="gf",
@@ -509,6 +683,7 @@ def test_slash_nonexistent_shows_filtered_list(mock_init, mock_parse, mock_list_
         resume_session=None,
         session_end=False,
         session_history=None,
+        terminal_lines=None,
     )
 
     with (
@@ -548,7 +723,10 @@ def test_list_prompts_all(capsys):
     assert "User Prompts" in captured.out
 
 
-@patch("asky.cli.prompts.USER_PROMPTS", {"gn": "Guardian news", "wh": "Weather", "ex": "Explain"})
+@patch(
+    "asky.cli.prompts.USER_PROMPTS",
+    {"gn": "Guardian news", "wh": "Weather", "ex": "Explain"},
+)
 def test_list_prompts_filtered(capsys):
     """Test list_prompts_command filters by prefix."""
     from asky.cli.prompts import list_prompts_command
