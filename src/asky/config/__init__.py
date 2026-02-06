@@ -111,6 +111,7 @@ RESEARCH_CHUNK_OVERLAP = _research.get("chunk_overlap", 200)
 RESEARCH_MAX_CHUNKS_PER_RETRIEVAL = _research.get("max_chunks_per_retrieval", 5)
 RESEARCH_SUMMARIZATION_WORKERS = _research.get("summarization_workers", 2)
 RESEARCH_MEMORY_MAX_RESULTS = _research.get("memory_max_results", 10)
+RESEARCH_SOURCE_ADAPTERS = _research.get("source_adapters", {})
 
 # Research Embedding Settings
 _research_embedding = _research.get("embedding", {})

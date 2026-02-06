@@ -1,7 +1,6 @@
 CRITICAL - Security
 
-  - src/asky/tools.py:220-221 - Shell injection vulnerability: subprocess.run(cmd_str, shell=True) with user-controlled args. Should use shell=False with args
-   as list.
+  - src/asky/tools.py:220-221 - Shell injection vulnerability: subprocess.run(cmd_str, shell=True) with user-controlled args. Should use shell=False with args # NO, we need shell=True, also we trust the user input here.
 
   HIGH - Potential Bugs
 

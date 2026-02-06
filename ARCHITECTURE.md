@@ -98,6 +98,13 @@ src/asky/
 ├── config/             # Configuration management
 │   ├── __init__.py     # Constants export from TOML
 │   └── loader.py       # TOML loading, config merging
+├── research/           # Research mode cache, RAG, and adapters
+│   ├── adapters.py     # Map custom tools to research source fetches
+│   ├── cache.py        # Research cache and findings persistence
+│   ├── chunker.py      # Text chunking utilities for retrieval
+│   ├── embeddings.py   # Embedding API client
+│   ├── tools.py        # Research tool executors
+│   └── vector_store.py # Embedding storage and similarity search
 ├── config.toml         # Default configuration file
 ├── tools.py            # Tool execution (web search, URL fetch, custom tools)
 ├── push_data.py        # HTTP data push to external endpoints
@@ -267,6 +274,7 @@ Unified storage for both history and sessions:
 | `[prompts]` | System prompt templates |
 | `[user_prompts]` | User-defined shortcuts (`/gn`, `/wh`) |
 | `[tool.name]` | Custom tool definitions |
+| `[research.source_adapters.name]` | Map research targets (e.g. `local://`) to custom tools |
 | `[push_data.name]` | HTTP endpoint definitions for data push |
 | `[session]` | Compaction threshold and strategy |
 | `[email]` | SMTP settings |
@@ -302,6 +310,15 @@ default = "."
 ```
 
 Execution via `subprocess.run()` with argument quoting.
+
+#### Research Source Adapters (`research/adapters.py`)
+
+Research mode supports adapter routing for non-HTTP sources while keeping the existing research tool schemas unchanged.
+
+- Define adapters under `[research.source_adapters.*]` with `prefix` and either `tool` or `discover_tool` + `read_tool`
+- Matching targets (such as `local://papers`) are fetched via the configured custom tool
+- Adapter tool stdout must return JSON with `title`, `content`, and `links`
+- Cached adapter content is reused by `get_link_summaries`, `get_relevant_content`, and `get_full_content`
 
 ---
 
@@ -420,6 +437,7 @@ Tests are organized by component in `tests/`:
 | `test_llm.py` | LLM API calls, conversation loop |
 | `test_tools.py` | Tool execution, web search |
 | `test_custom_tools.py` | Custom tool dispatch |
+| `test_research_adapters.py` | Research adapter normalization and cache hydration |
 | `test_integration.py` | End-to-end flows |
 | `test_page_crawler.py` | Deep dive page crawler |
 | `test_html.py` | HTML stripping |

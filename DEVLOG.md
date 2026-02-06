@@ -1,3 +1,34 @@
+## 2026-02-05 - Research Source Adapters for Local/Custom Content
+
+**Summary**: Added a thin adapter layer that lets research mode reuse existing `extract_links/get_*` tools for non-HTTP targets (for example `local://...`) via user-defined custom tools.
+
+**Changes**:
+- **Adapter Layer**:
+  - Added `src/asky/research/adapters.py`.
+  - New config-backed adapter resolution via `research.source_adapters`.
+  - Supports single-tool adapters (`tool`) or split adapters (`discover_tool` + `read_tool`).
+  - Adapter contract expects custom tool `stdout` JSON with `title`, `content`, and `links`.
+  - Added payload normalization for common link fields (`href/url/id/path` + title/text fallbacks).
+- **Config**:
+  - Added `RESEARCH_SOURCE_ADAPTERS` export in `src/asky/config/__init__.py`.
+  - Added documented adapter example in `src/asky/config.toml` under the `[research]` section.
+- **Research Tool Integration** (`src/asky/research/tools.py`):
+  - `_fetch_and_parse()` now checks adapter mappings first, then falls back to HTTP fetching.
+  - `extract_links` can cache adapter-backed targets without changing tool schema.
+  - Added lazy adapter cache hydration for `get_link_summaries`, `get_relevant_content`, and `get_full_content` when adapter targets are requested before being cached.
+  - Summarization trigger for adapter content is conditional on non-empty content.
+- **Tests**:
+  - Added `tests/test_research_adapters.py` (6 tests) for adapter matching, normalization, JSON error handling, discover/read tool routing, and hydration behavior in research tools.
+
+**Verification**:
+- Full test suite passed: `308 passed` (`uv run pytest`).
+
+**Gotchas / Follow-up**:
+- Adapter tools must emit valid JSON on `stdout`; non-JSON output is treated as an adapter error.
+- For best RAG results on local sources, adapter tools should provide meaningful plain-text `content` (not only link metadata).
+
+---
+
 ## 2026-02-05 - Context Clipping and Error Handling
 
 **Summary**: Implemented proactive context compaction and interactive error handling to prevent application crashes due to LLM context overflow (400 Bad Request).

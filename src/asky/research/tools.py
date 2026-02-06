@@ -17,6 +17,7 @@ from asky.research.cache import ResearchCache
 from asky.research.chunker import chunk_text
 from asky.research.embeddings import get_embedding_client
 from asky.research.vector_store import get_vector_store
+from asky.research.adapters import fetch_source_via_adapter, has_source_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -180,9 +181,23 @@ def _sanitize_url(url: str) -> str:
     return url.replace("\\", "")
 
 
-def _fetch_and_parse(url: str) -> Dict[str, Any]:
+def _fetch_and_parse(
+    url: str,
+    query: Optional[str] = None,
+    max_links: Optional[int] = None,
+    operation: str = "discover",
+) -> Dict[str, Any]:
     """Fetch URL and extract content + links."""
     url = _sanitize_url(url)
+
+    adapter_result = fetch_source_via_adapter(
+        url,
+        query=query,
+        max_links=max_links,
+        operation=operation,
+    )
+    if adapter_result is not None:
+        return adapter_result
 
     try:
         headers = {"User-Agent": USER_AGENT}
@@ -231,6 +246,46 @@ def _fetch_and_parse(url: str) -> Dict[str, Any]:
             "links": [],
             "error": f"Unexpected error: {str(e)}",
         }
+
+
+def _ensure_adapter_cached(
+    cache: ResearchCache,
+    url: str,
+    query: Optional[str] = None,
+    max_links: Optional[int] = None,
+    require_content: bool = False,
+) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """Ensure adapter targets are cached and optionally hydrated with content."""
+    cached = cache.get_cached(url)
+    if cached and (not require_content or cached.get("content")):
+        return cached, None
+
+    if not has_source_adapter(url):
+        return cached, None
+
+    parsed = _fetch_and_parse(
+        url,
+        query=query,
+        max_links=max_links,
+        operation="read" if require_content else "discover",
+    )
+    if parsed.get("error"):
+        return cached, parsed["error"]
+    if require_content and not parsed.get("content"):
+        return cached, "Adapter returned empty content."
+
+    cache.cache_url(
+        url=url,
+        content=parsed.get("content", ""),
+        title=parsed.get("title", url),
+        links=parsed.get("links", []),
+        trigger_summarization=bool(parsed.get("content", "")),
+    )
+
+    cached = cache.get_cached(url)
+    if require_content and cached and not cached.get("content"):
+        return cached, "Adapter returned empty content."
+    return cached, None
 
 
 def _get_cache() -> ResearchCache:
@@ -287,7 +342,12 @@ def execute_extract_links(args: Dict[str, Any]) -> Dict[str, Any]:
         else:
             # Fetch fresh
             logger.debug(f"Fetching {url}")
-            parsed = _fetch_and_parse(url)
+            parsed = _fetch_and_parse(
+                url,
+                query=query,
+                max_links=max_links,
+                operation="discover",
+            )
 
             if parsed["error"]:
                 results[url] = {"error": parsed["error"]}
@@ -299,7 +359,7 @@ def execute_extract_links(args: Dict[str, Any]) -> Dict[str, Any]:
                 content=parsed["content"],
                 title=parsed["title"],
                 links=parsed["links"],
-                trigger_summarization=True,
+                trigger_summarization=bool(parsed["content"]),
             )
 
             links = parsed["links"]
@@ -358,6 +418,14 @@ def execute_get_link_summaries(args: Dict[str, Any]) -> Dict[str, Any]:
 
     for url in urls:
         summary_info = cache.get_summary(url)
+        if not summary_info and has_source_adapter(url):
+            _, adapter_error = _ensure_adapter_cached(
+                cache, url, require_content=True
+            )
+            if adapter_error:
+                results[url] = {"error": f"Adapter fetch failed: {adapter_error}"}
+                continue
+            summary_info = cache.get_summary(url)
 
         if not summary_info:
             results[url] = {
@@ -414,7 +482,16 @@ def execute_get_relevant_content(args: Dict[str, Any]) -> Dict[str, Any]:
     results = {}
 
     for url in urls:
-        cached = cache.get_cached(url)
+        cached, adapter_error = _ensure_adapter_cached(
+            cache=cache,
+            url=url,
+            query=query,
+            max_links=max_chunks,
+            require_content=True,
+        )
+        if adapter_error and not cached:
+            results[url] = {"error": f"Adapter fetch failed: {adapter_error}"}
+            continue
 
         if not cached:
             results[url] = {
@@ -426,6 +503,9 @@ def execute_get_relevant_content(args: Dict[str, Any]) -> Dict[str, Any]:
         content = cached["content"]
 
         if not content:
+            if adapter_error:
+                results[url] = {"error": f"Adapter fetch failed: {adapter_error}"}
+                continue
             results[url] = {"error": "Cached content is empty."}
             continue
 
@@ -489,7 +569,12 @@ def execute_get_full_content(args: Dict[str, Any]) -> Dict[str, Any]:
     results = {}
 
     for url in urls:
-        cached = cache.get_cached(url)
+        cached, adapter_error = _ensure_adapter_cached(
+            cache=cache, url=url, require_content=True
+        )
+        if adapter_error and not cached:
+            results[url] = {"error": f"Adapter fetch failed: {adapter_error}"}
+            continue
 
         if not cached:
             results[url] = {
@@ -499,6 +584,9 @@ def execute_get_full_content(args: Dict[str, Any]) -> Dict[str, Any]:
 
         content = cached.get("content", "")
         if not content:
+            if adapter_error:
+                results[url] = {"error": f"Adapter fetch failed: {adapter_error}"}
+                continue
             results[url] = {"error": "Cached content is empty."}
             continue
 
