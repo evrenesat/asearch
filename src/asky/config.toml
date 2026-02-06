@@ -25,6 +25,9 @@ continue_query_threshold = 160
 # Defaults to 10 lines. Can be overridden via -tl flag.
 terminal_context_lines = 10
 
+# Helper to enable compact, two-line banner mode
+compact_banner = false
+
 # URL of your SearXNG instance.
 searxng_url = "http://localhost:8888"
 

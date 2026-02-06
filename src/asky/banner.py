@@ -52,6 +52,9 @@ class BannerState:
     embedding_api_calls: int = 0
     embedding_prompt_tokens: int = 0
 
+    # Compact Mode
+    compact_banner: bool = False
+
     def get_token_str(self, alias: str) -> str:
         usage = self.token_usage.get(alias, {"input": 0, "output": 0})
         total = usage["input"] + usage["output"]
@@ -68,19 +71,86 @@ def display(lines):
     console.print()
 
 
-# def mini():
-#     """Mini version"""
-#     display(
-#         [
-#             f"[{D}] ╭[{G}]∩[/{G}]─────[{G}]∩[/{G}]╮[/{D}] [{M1}]a[/{M1}]",
-#             f"[{D}] │[/{D}] [{G}]▷[/{G}] [{D}][{N}]ω[/{N}][/{D}] [{G}]_[/{G}] [{D}]│[/{D}] [{M2}]s[/{M2}]",
-#             f"[{D}] │[/{D}] [{P}]◠[/{P}]   [{P}]◠[/{P}] [{D}]│[/{D}] [{M3}]k[/{M3}]",
-#             f"[{D}] ╰───────╯[/{D}] [{M4}]y[/{M4}]",
-#         ]
-#     )
+def get_compact_banner(state: BannerState) -> Panel:
+    """Create a compact two-line banner using emojis and minimal text."""
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(justify="left")
+
+    # Line 1: Models & Tokens
+    # 🤖 main_model (id) [in: X, out: Y] | 📝 sum_model [in: X, out: Y]
+
+    main_usage = state.token_usage.get(state.model_alias, {"input": 0, "output": 0})
+    sum_usage = state.token_usage.get(state.sum_alias, {"input": 0, "output": 0})
+
+    line1_parts = []
+
+    # Main Model
+    line1_parts.append(
+        f"🤖 [bold white]{state.model_alias}[/] [dim]({state.model_id})[/]"
+        f" [dim]\\[⬇️ {main_usage['input']:,} ⬆️ {main_usage['output']:,}][/]"
+    )
+
+    # Summarizer
+    line1_parts.append(
+        f"📝 [bold white]{state.sum_alias}[/] [dim]({state.sum_id})[/]"
+        f" [dim]\\[⬇️ {sum_usage['input']:,} ⬆️ {sum_usage['output']:,}][/]"
+    )
+
+    grid.add_row(" | ".join(line1_parts))
+
+    # Line 2: Status, Session, Tools
+    #  1/20 | 🧠 embed_stats | 💾 db_count | 🗂️ session_name | 🛠️ tools...
+
+    line2_parts = []
+
+    # Turns
+    line2_parts.append(f"🔄 {state.current_turn}/{state.max_turns}")
+
+    # Embedding (Research Mode)
+    if state.research_mode:
+        embed_stats = (
+            f"🧠 {state.embedding_texts} txt / {state.embedding_api_calls} call"
+        )
+        if state.embedding_prompt_tokens > 0:
+            embed_stats += f" / {state.embedding_prompt_tokens:,} tok"
+        line2_parts.append(embed_stats)
+
+    # DB Count
+    line2_parts.append(f"💾 {state.db_count}")
+
+    # Session
+    if state.session_name:
+        sess_name = state.session_name
+        if len(sess_name) > 20:
+            sess_name = sess_name[:17] + "..."
+        line2_parts.append(f"🗂️  {sess_name} ({state.session_msg_count})")
+    else:
+        line2_parts.append(f"🗂️  {state.total_sessions}")
+
+    # Tools
+    if state.tool_usage:
+        tools_str = " ".join([f"{k}:{v}" for k, v in state.tool_usage.items()])
+        line2_parts.append(f"🛠️  {tools_str}")
+    else:
+        line2_parts.append("🛠️  0")
+
+    grid.add_row(" | ".join(line2_parts))
+
+    return Panel(
+        grid,
+        box=box.ROUNDED,
+        border_style="dim",
+        padding=(0, 1),
+        subtitle=state.status_message,
+        subtitle_align="right",
+    )
 
 
 def get_banner(state: BannerState) -> Panel:
+    """Create the banner panel, dispatching to compact or full version."""
+    if state.compact_banner:
+        return get_compact_banner(state)
+
     """Create a side-by-side banner with an icon and configuration info using BannerState."""
     icon_lines = [
         f"[{D}] ╭[{G}]∩[/{G}]─────[{G}]∩[/{G}]╮[/{D}] [{M1}]a[/{M1}]",

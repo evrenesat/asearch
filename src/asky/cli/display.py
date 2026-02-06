@@ -13,6 +13,7 @@ from asky.config import (
     MAX_TURNS,
     MODELS,
     SUMMARIZATION_MODEL,
+    COMPACT_BANNER,
 )
 from asky.storage import get_db_record_count
 
@@ -148,6 +149,7 @@ class InterfaceRenderer:
             embedding_texts=embedding_texts,
             embedding_api_calls=embedding_api_calls,
             embedding_prompt_tokens=embedding_prompt_tokens,
+            compact_banner=COMPACT_BANNER,
         )
 
         return get_banner(state)

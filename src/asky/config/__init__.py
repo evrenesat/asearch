@@ -32,6 +32,7 @@ DEFAULT_CONTEXT_SIZE = _gen.get("default_context_size", 4096)
 LOG_LEVEL = _gen.get("log_level", "INFO")
 LOG_FILE = _gen.get("log_file", "~/.config/asky/asky.log")
 LIVE_BANNER = True
+COMPACT_BANNER = _gen.get("compact_banner", False)
 
 # Limits & Timeouts
 _limits = _CONFIG.get("limits", {})

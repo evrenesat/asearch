@@ -1,4 +1,20 @@
-## 2026-02-06 - Terminal Context Integration
+## 2026-02-06 - Compact Two-Line Banner
+
+**Summary**: Introduced an optional "compact banner" mode that reduces the CLI header to two lines using unicode icons and emojis, suitable for smaller screens or power users who prefer minimal UI.
+
+**Changes**:
+- **Config**: Added `compact_banner` (default: `false`) to `[general]` section in `config.toml` (and `loader.py` defaults).
+- **UI**: Added `get_compact_banner` in `banner.py` which renders:
+  - Line 1: Models & Token Usage (🤖, 📝)
+  - Line 2: Tools, Turns, Research Stats, DB Count, Session Name (🛠️, 🔄, 🧠, 💾, 🗂️)
+- **Integration**: Updated `InterfaceRenderer` in `display.py` to respect the configuration.
+- **Testing**: Added `tests/test_banner_compact.py` to verify rendering logic and emoji presence.
+
+**Verification**:
+- Verified `get_compact_banner` produces expected string output via new unit tests.
+- Full test suite passed (314 tests).
+
+---
 
 **Summary**: Added optional feature to include the last N lines of terminal output as context for queries, enabling "asky -tl why is this error happening?" workflows.
 

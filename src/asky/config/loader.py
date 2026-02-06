@@ -59,6 +59,7 @@ def load_config() -> Dict[str, Any]:
                 "query_summary_max_chars": 40,
                 "continue_query_threshold": 160,
                 "terminal_context_lines": 10,
+                "compact_banner": False,
                 "log_level": "INFO",
                 "log_file": "~/.config/asky/asky.log",
                 "answer_summary_max_chars": 200,
