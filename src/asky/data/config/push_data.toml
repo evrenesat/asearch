@@ -1,0 +1,46 @@
+# --- Email Settings ---
+[email]
+smtp_host = "smtp.gmail.com"
+smtp_port = 587
+# Use smtp_use_ssl = true for port 465 (direct SSL/TLS connection)
+# Use smtp_use_tls = true for port 587 (STARTTLS upgrade)
+smtp_use_ssl = false
+smtp_use_tls = true
+# Authentication - use env var (recommended) or direct value
+smtp_user_env = "ASKY_SMTP_USER"
+smtp_password_env = "ASKY_SMTP_PASSWORD"
+# Default sender address (optional, defaults to smtp_user)
+from_address = ""
+
+# --- Push Data Configuration ---
+# Define HTTP endpoints to push query results to external services.
+# Each endpoint can be enabled for LLM tool use and/or CLI invocation.
+#
+# Field value types:
+#   - Static: "literal_value" - used as-is
+#   - Environment: key_env = "ENV_VAR_NAME" - read from environment variable
+#   - Dynamic: "${param}" - provided by LLM tool call or CLI --push-param
+#   - Special: "${query}", "${answer}", "${timestamp}", "${model}" - auto-filled
+#
+# Example endpoint configuration (commented out by default):
+#
+# [push_data.example_webhook]
+# url = "https://webhook.site/your-unique-id"
+# method = "post"  # "get" or "post"
+# enabled = false  # Set to true to expose as LLM tool
+# description = "Post findings to webhook"
+#
+# # Optional headers
+# [push_data.example_webhook.headers]
+# Content-Type = "application/json"
+# Authorization_env = "MY_AUTH_TOKEN"  # Read from env var
+#
+# # Request payload fields
+# [push_data.example_webhook.fields]
+# static_field = "some_value"          # Static value
+# api_key_env = "MY_API_KEY"           # From environment variable
+# title = "${title}"                   # Dynamic from LLM/CLI
+# content = "${answer}"                # Special variable (answer text)
+# query_text = "${query}"              # Special variable (query text)
+# model_used = "${model}"              # Special variable (model alias)
+# timestamp = "${timestamp}"           # Special variable (ISO timestamp)

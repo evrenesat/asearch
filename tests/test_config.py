@@ -31,7 +31,7 @@ def test_invalid_config_exits(tmp_path):
     # Create invalid config
     config_dir = tmp_path / "asky"
     config_dir.mkdir()
-    config_file = config_dir / "config.toml"
+    config_file = config_dir / "general.toml"
     config_file.write_text("invalid_toml = [")
 
     with patch("asky.config.loader._get_config_dir", return_value=config_dir):

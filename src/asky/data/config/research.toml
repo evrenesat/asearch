@@ -1,0 +1,65 @@
+# --- Research Mode Settings ---
+# Deep research mode with RAG-based content retrieval
+[research]
+# Enable research mode tools
+enabled = true
+
+# Cache TTL in hours (cached pages expire after this time)
+cache_ttl_hours = 24
+
+# Maximum links to return per URL (before relevance filtering)
+max_links_per_url = 50
+
+# Maximum links after relevance filtering (when query is provided)
+max_relevant_links = 20
+
+# Chunk size for content splitting (characters)
+chunk_size = 1000
+
+# Chunk overlap for context continuity (characters)
+chunk_overlap = 200
+
+# Number of relevant chunks to retrieve per URL in RAG queries
+max_chunks_per_retrieval = 5
+
+# Background summarization thread pool size
+summarization_workers = 2
+
+# Maximum findings to return from research memory queries
+memory_max_results = 10
+
+# Optional adapter layer to route research targets (e.g. local://...) through
+# user-defined custom tools. This keeps research tools generic while letting
+# you plug in your own readers/indexers (PDF, docs, local files, etc).
+#
+# Contract for adapter tool stdout (JSON):
+# {
+#   "title": "Source title",
+#   "content": "Plain text content (optional for directory-like targets)",
+#   "links": [{"text": "Doc title", "href": "local://doc-id"}],
+#   "error": null
+# }
+#
+# [research.source_adapters.local]
+# enabled = false
+# prefix = "local://"
+# tool = "local_research_source" # Optional single-tool mode (used for both discover/read)
+# discover_tool = "local_list_content" # Optional override for extract_links-style discovery
+# read_tool = "local_read_content"     # Optional override for full/relevant content retrieval
+
+# Embedding API settings (LM Studio compatible)
+[research.embedding]
+# API endpoint for embeddings (OpenAI-compatible format)
+api_url = "http://localhost:1234/v1/embeddings"
+
+# Model to use for embeddings (must be loaded in LM Studio)
+model = "gaianet/text-embedding-nomic-embed-text-v1.5-embedding"
+
+# Embedding dimension (depends on model - nomic is 768)
+dimension = 768
+
+# Batch size for embedding requests
+batch_size = 32
+
+# Timeout for embedding API requests in seconds
+timeout = 30

@@ -1,0 +1,45 @@
+# --- User Prompts (Shortcuts) ---
+# Define shortcuts that can be used via '/key' in the CLI.
+# Example: 'ask /gn' will be expanded to the prompt below.
+[user_prompts]
+gn = "Give me latest news from The Guardian, use https://www.theguardian.com/europe"
+wh = "how is weather in "
+ex = "Explain this: /cp"
+
+# --- User defined tools ---
+# These tools allow you to expose CLI commands to the LLM.
+# Use {parameter_name} in the command to inject arguments, or they will be appended.
+[tool.list_dir]
+command = "ls {flags} {path}"
+description = "List the contents of a directory."
+parameter_type = "object"
+enabled = true
+[tool.list_dir.parameters]
+type = "object"
+required = ["path"]
+
+[tool.list_dir.parameters.properties.path]
+type = "string"
+default = "."
+
+[tool.list_dir.parameters.properties.flags]
+type = "string"
+default = "-la"
+
+
+# [tool.grep_search]
+# command = "grep -r --exclude-dir=.venv --exclude-dir=node_modules {pattern} {path}"
+# description = "Search for a pattern in files recursively."
+
+# [tool.grep_search.parameters]
+# type = "object"
+# required = ["pattern"]
+
+# [tool.grep_search.parameters.properties.pattern]
+# type = "string"
+# description = "The regex pattern to search for."
+
+# [tool.grep_search.parameters.properties.path]
+# type = "string"
+# description = "The directory path to search in."
+# default = "."

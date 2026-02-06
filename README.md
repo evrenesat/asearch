@@ -270,23 +270,36 @@ default = "."
 > **Optional Parameters**: If you define a parameter with a `default` value in `config.toml`, it will be automatically injected into your `command` if the LLM omits it.
 
 ## Configuration options
-[See default configuration](./src/asky/config.toml)
+[See default configuration](./src/asky/data/config/general.toml)
 
 
-On first run, a default configuration file is created at `~/.config/asky/config.toml`. You can edit this file to configure models, API keys, and other settings.
+On first run, a default configuration directory is created at `~/.config/asky/` containing several TOML files to help organize your settings:
+
+- `general.toml`: Basic settings (logging, search provider, timeouts)
+- `api.toml`: API endpoint definitions
+- `models.toml`: Model configurations
+- `prompts.toml`: System prompts
+- `user.toml`: User shortcuts and custom tools
+- `push_data.toml`: Email and Push Data settings
+- `research.toml`: Deep Research settings
+
+You can edit these files individually to configure models, API keys, and other settings. The legacy `config.toml` is still supported for backward compatibility and overrides split files if present.
 
 ### API Keys
 You can set API keys in two ways:
 1. **Environment Variables**: Set `GOOGLE_API_KEY` (or other configured env vars) in your shell.
-2. **Config File**: Add keys directly to `[api.name]` sections in `config.toml`.
+2. **Config File**: Add keys directly to `api.toml`.
 
-Example `config.toml`:
+Example `general.toml`:
 ```toml
 [general]
 default_model = "gf"
 compact_banner = true
 terminal_context_lines = 10
+```
 
+Example `api.toml`:
+```toml
 [api.gemini]
 api_key_env = "GOOGLE_API_KEY"
 

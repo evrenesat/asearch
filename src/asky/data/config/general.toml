@@ -1,0 +1,91 @@
+# General Settings
+[general]
+# Name of the environment variable that stores the path to the SQLite history database.
+# Default if not set: SEARXNG_HISTORY_DB_PATH
+db_path_env_var = "ASKY_DB_PATH"
+
+# Logging Configuration
+# Level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_level = "INFO"
+# Log file path. Defaults to ~/.config/asky/asky.log
+log_file = "~/.config/asky/asky.log"
+
+# Maximum length of the query and answer summaries shown in 'asky -H'.
+query_summary_max_chars = 40
+answer_summary_max_chars = 200
+
+# Threshold for using full query vs summary in --continue-chat mode.
+# If query length is below this, it's used as is.
+continue_query_threshold = 160
+
+# Number of lines of terminal context to fetch and prepend to the query.
+# Defaults to 10 lines. Can be overridden via -tl flag.
+terminal_context_lines = 10
+
+# Helper to enable compact, two-line banner mode
+compact_banner = false
+
+# URL of your SearXNG instance.
+searxng_url = "http://localhost:8888"
+
+# Search provider to be used: "searxng" or "serper"
+search_provider = "searxng"
+
+# URL of the Serper API.
+serper_api_url = "https://google.serper.dev/search"
+
+# Name of the environment variable that stores the Serper API key.
+serper_api_key_env = "SERPER_API_KEY"
+
+# Maximum number of turns (tool calls) allowed in a single conversation loop.
+max_turns = 20
+
+# Timeout for API requests in seconds
+request_timeout = 60
+
+# Default context size (if not specified in the model configuration)
+default_context_size = 4096
+
+# Default model used when no model is specified via CLI (-m).
+default_model = "gf"
+
+# Model used specifically for internal text summarization tasks.
+summarization_model = "lfm"
+
+# User-Agent string to be used for search and content retrieval requests.
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+
+# Specific User-Agent string for LLM API requests.
+# Some providers only accept specific user agents for certain subscriptions types.
+llm_user_agent = "asky/1.0.0"
+
+# --- Limits & Timeouts ---
+[limits]
+# Maximum number of links returned from get_url_details to prevent context overflow.
+max_url_detail_links = 50
+
+# Maximum snippet length in search results.
+search_snippet_max_chars = 400
+
+# Maximum recursion depth for expanding slash commands.
+query_expansion_max_depth = 5
+
+# Maximum file size for custom prompts read from file (in bytes).
+max_prompt_file_size = 10240
+
+# LLM API retry settings
+max_retries = 10
+initial_backoff = 2
+max_backoff = 60
+
+# Search and fetch timeouts in seconds
+search_timeout = 20
+fetch_timeout = 20
+
+# --- Session Settings ---
+[session]
+# Trigger compaction at this % of model context
+compaction_threshold = 80
+
+# Compaction strategy: "summary_concat" or "llm_summary"
+compaction_strategy = "summary_concat"
