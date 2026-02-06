@@ -1,5 +1,6 @@
 import os
 import tempfile
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 from asky.rendering import save_html_report, _create_html_content
 
@@ -27,48 +28,65 @@ def test_create_html_content_no_template():
 
 
 def test_save_html_report():
-    """Test saving the HTML report to a file."""
+    """Test saving the HTML report to the archive directory with timestamp."""
     content = "# Test Content"
 
-    # Mock _create_html_content to avoid template file I/O complexity
-    with patch(
-        "asky.rendering._create_html_content",
-        return_value="<htmled># Test Content</htmled>",
-    ):
-        path = save_html_report(content, "test_output.html")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        archive_dir = Path(temp_dir)
 
-        assert path.endswith("test_output.html")
-        assert os.path.exists(path)
+        # Mock ARCHIVE_DIR, datetime, and create_html_content
+        with (
+            patch("asky.rendering.ARCHIVE_DIR", archive_dir),
+            patch(
+                "asky.rendering._create_html_content",
+                return_value="<htmled># Test Content</htmled>",
+            ),
+            patch("asky.rendering.generate_slug", return_value="test_slug"),
+            patch("asky.rendering.datetime") as mock_datetime,
+        ):
+            # Mock datetime.now()
+            mock_now = MagicMock()
+            mock_now.strftime.return_value = "20230101_120000"
+            mock_datetime.now.return_value = mock_now
 
-        with open(path, "r") as f:
-            saved = f.read()
-            assert saved == "<htmled># Test Content</htmled>"
+            # Call
+            path_str = save_html_report(content, "Test Slug Input")
 
-        # Clean up
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+            # Verify
+            expected_filename = "test_slug_20230101_120000.html"
+            expected_path = archive_dir / expected_filename
+
+            assert path_str == str(expected_path)
+            assert expected_path.exists()
+            assert expected_path.read_text() == "<htmled># Test Content</htmled>"
 
 
-def test_save_html_report_overwrite():
-    """Test that it overwrites existing files."""
-    filename = "test_overwrite.html"
-    temp_dir = tempfile.gettempdir()
-    path = os.path.join(temp_dir, filename)
+def test_save_html_report_no_hint():
+    """Test saving without a hint."""
+    content = "# Test Content"
 
-    # Create valid dummy file
-    with open(path, "w") as f:
-        f.write("OLD CONTENT")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        archive_dir = Path(temp_dir)
 
-    with patch("asky.rendering._create_html_content", return_value="NEW CONTENT"):
-        returned_path = save_html_report("foo", filename)
-        assert returned_path == path
+        with (
+            patch("asky.rendering.ARCHIVE_DIR", archive_dir),
+            patch(
+                "asky.rendering._create_html_content",
+                return_value="<htmled># Test Content</htmled>",
+            ),
+            patch(
+                "asky.rendering.generate_slug",
+                side_effect=lambda t, max_words: (
+                    "untitled" if t == "untitled" else "slug"
+                ),
+            ),
+            patch("asky.rendering.datetime") as mock_datetime,
+        ):
+            mock_now = MagicMock()
+            mock_now.strftime.return_value = "20230101_120000"
+            mock_datetime.now.return_value = mock_now
 
-        with open(path, "r") as f:
-            assert f.read() == "NEW CONTENT"
+            path_str = save_html_report(content)
 
-    try:
-        os.remove(path)
-    except OSError:
-        pass
+            expected_filename = "untitled_20230101_120000.html"
+            assert Path(path_str).name == expected_filename

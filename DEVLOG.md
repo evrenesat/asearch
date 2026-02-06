@@ -1,3 +1,21 @@
+## 2026-02-06 - Refactoring File Generation and Session Utils
+
+**Summary**: Refactored the HTML file generation mechanism to save files in a persistent archive directory (`~/.config/asky/archive`) with meaningful, timestamped names. Also extracted session slug generation logic into a reusable utility module.
+
+**Changes**:
+- **Core**: created `src/asky/core/utils.py` and moved `STOPWORDS` and `generate_slug` (renamed from `generate_session_name`) there.
+- **Rendering**: updated `src/asky/rendering.py` to use `ARCHIVE_DIR` and `generate_slug`. Added `save_html_report` logic to generate filenames like `slug_YYYYMMDD_HHMMSS.html`.
+- **Config**: added `ARCHIVE_DIR` to `src/asky/config/__init__.py`.
+- **CLI**: updated `sessions.py`, `history.py`, and `engine.py` to pass context-aware `filename_hint`s (e.g., session name, answer preview) to the rendering function.
+- **Testing**: updated `tests/test_html_report.py` and `tests/test_llm.py` to verify the new archiving behavior and mocking strategies.
+
+**Verification**:
+- Verified that `asky ... --open` generates correctly named files in `~/.config/asky/archive/`.
+- Verified that session and history viewing works with the new system.
+- All tests passed.
+
+---
+
 ## 2026-02-06 - Terminal Context Status in Banner
 
 **Summary**: Moved the "Fetching last N lines..." message from stdout to the CLI banner status line using a callback mechanism. This improves the UI by keeping the history clean and preventing status messages from cluttering the scrollback.

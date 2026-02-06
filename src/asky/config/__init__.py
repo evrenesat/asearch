@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from asky.config.loader import load_config, _get_config_dir
 
+
 # --- Initialize Configuration ---
 _CONFIG = load_config()
 
@@ -33,6 +34,8 @@ LOG_LEVEL = _gen.get("log_level", "INFO")
 LOG_FILE = _gen.get("log_file", "~/.config/asky/asky.log")
 LIVE_BANNER = True
 COMPACT_BANNER = _gen.get("compact_banner", False)
+ARCHIVE_DIR = Path(_gen.get("archive_dir", "~/.config/asky/archive")).expanduser()
+
 
 # Limits & Timeouts
 _limits = _CONFIG.get("limits", {})

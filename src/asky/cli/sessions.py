@@ -85,7 +85,10 @@ def print_session_command(
 
     if open_browser:
         print(f"Opening Session #{session.id} in browser...")
-        render_to_browser(full_text)
+        render_to_browser(
+            full_text, filename_hint=session.name or f"session_{session.id}"
+        )
+
     else:
         console = Console()
         console.print(Markdown(full_text))

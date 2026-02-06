@@ -207,33 +207,20 @@ def test_generate_summaries_short_answer(mock_get_msg):
 
 
 @patch("asky.rendering.webbrowser.open")
-@patch("asky.rendering.tempfile.NamedTemporaryFile")
-@patch("builtins.open")
-@patch("asky.config.TEMPLATE_PATH")
-def test_render_to_browser(
-    mock_template_path, mock_open_file, mock_tempfile, mock_browser_open
-):
+@patch("asky.rendering._save_to_archive")
+@patch("asky.rendering._create_html_content")
+def test_render_to_browser(mock_create_html, mock_save_to_archive, mock_browser_open):
     # Setup mocks
-    mock_template_path.exists.return_value = True
-    mock_template_path.__str__.return_value = "/path/to/template.html"
-
-    mock_file = MagicMock()
-    mock_file.read.return_value = "<html><body>{{CONTENT}}</body></html>"
-    mock_open_file.return_value.__enter__.return_value = mock_file
-
-    mock_temp = MagicMock()
-    mock_temp.name = "/tmp/temp_asky.html"
-    mock_tempfile.return_value.__enter__.return_value = mock_temp
+    mock_create_html.return_value = "<html>Content</html>"
+    mock_save_to_archive.return_value = "/path/to/archive/file.html"
 
     # Call the function
-    render_to_browser("Test Markdown")
+    render_to_browser("Test Markdown", filename_hint="my_hint")
 
     # Assertions
-    mock_open_file.assert_any_call(mock_template_path, "r")
-    mock_temp.write.assert_called()
-    written_content = mock_temp.write.call_args[0][0]
-    assert "Test Markdown" in written_content
-    mock_browser_open.assert_called_with(f"file://{mock_temp.name}")
+    mock_create_html.assert_called_with("Test Markdown")
+    mock_save_to_archive.assert_called_with("<html>Content</html>", "my_hint")
+    mock_browser_open.assert_called_with("file:///path/to/archive/file.html")
 
 
 @patch("asky.core.engine.get_llm_msg")

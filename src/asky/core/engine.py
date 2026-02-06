@@ -144,7 +144,9 @@ class ConversationEngine:
                             console.print(self.final_answer)
 
                     if self.open_browser:
-                        render_to_browser(self.final_answer)
+                        render_to_browser(
+                            self.final_answer, filename_hint=self.final_answer
+                        )
                     break
 
                 messages.append(msg)
@@ -215,7 +217,9 @@ class ConversationEngine:
                         console.print(self.final_answer)
 
                 if self.open_browser:
-                    render_to_browser(self.final_answer)
+                    render_to_browser(
+                        self.final_answer, filename_hint=self.final_answer
+                    )
 
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 400:

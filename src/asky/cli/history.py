@@ -91,7 +91,7 @@ def print_answers_command(
     print("-" * 60)
 
     if open_browser:
-        render_to_browser(context)
+        render_to_browser(context, filename_hint=f"history_answers_{ids_str}")
 
     if mail_recipients:
         from asky.email_sender import send_email
