@@ -32,3 +32,5 @@ CRITICAL - Security
 
   [ ] thin version of banner: 1 and 2 line versions.
   [] research on file/directory: done, needs testing.
+  [ ] Insert date time to end of final results as a footnote. (except when we are in concise mode)
+ you

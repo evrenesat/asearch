@@ -8,8 +8,8 @@ from asky.core import (
     extract_calls,
     get_llm_msg,
     generate_summaries,
-    run_conversation_loop,
     count_tokens,
+    ConversationEngine,
 )
 from asky.rendering import render_to_browser
 
@@ -126,7 +126,7 @@ def test_get_llm_msg_retry_after(mock_post):
 
 @patch("asky.core.engine.get_llm_msg")
 @patch("asky.core.engine.ToolRegistry.dispatch")
-def test_run_conversation_loop_basic(mock_dispatch, mock_get_msg):
+def test_conversation_engine_run_basic(mock_dispatch, mock_get_msg):
     # Mock LLM sequence:
     # 1. Tool call (web search)
     # 2. Final answer
@@ -147,11 +147,25 @@ def test_run_conversation_loop_basic(mock_dispatch, mock_get_msg):
     messages = [{"role": "system", "content": "System Prompt"}]
     model_config = {"id": "test_model", "max_chars": 1000}
 
-    final_answer = run_conversation_loop(model_config, messages, summarize=False)
+    # Use ConversationEngine directly
+    # Ideally we'd mock creating the registry, but we can pass a mocked registry
+    registry = MagicMock()
+    registry.dispatch.return_value = {"results": "search results"}
+    # Need get_schemas to return list
+    registry.get_schemas.return_value = []
+
+    engine = ConversationEngine(
+        model_config=model_config,
+        tool_registry=registry,
+        summarize=False,
+    )
+    final_answer = engine.run(messages)
 
     assert final_answer == "Final Answer"
     assert mock_get_msg.call_count == 2
-    assert mock_dispatch.call_count == 1
+
+    # Verify dispatch called on the registry instance we passed
+    assert registry.dispatch.call_count == 1
 
     # Check that tool output and final assistant answer were appended to messages
     # Messages: System, Tool Call, Tool Result, Final Assistant Answer
@@ -219,7 +233,10 @@ def test_render_to_browser(mock_create_html, mock_save_to_archive, mock_browser_
 
     # Assertions
     mock_create_html.assert_called_with("Test Markdown")
-    mock_save_to_archive.assert_called_with("<html>Content</html>", "my_hint")
+    # Now passes markdown_content for title extraction
+    mock_save_to_archive.assert_called_with(
+        "<html>Content</html>", "Test Markdown", "my_hint"
+    )
     mock_browser_open.assert_called_with("file:///path/to/archive/file.html")
 
 

@@ -1,4 +1,26 @@
-## 2026-02-06 - Research RAG Quality and Freshness Upgrade
+## 2026-02-07 - Smart Archive Filename Extraction
+
+**Summary**: Improved archive file naming by prompting models to use H1 markdown headers and automatically extracting titles for filenames.
+
+**Changes**:
+- **Prompts** (`prompts.toml`): Added instruction for models to start responses with an H1 header as a concise title (3-7 words).
+- **Rendering** (`rendering.py`):
+  - Added `H1_PATTERN` regex and `extract_markdown_title()` function to extract H1 headers from markdown.
+  - Modified `_save_to_archive()` to accept original markdown content and extract titles when no explicit `filename_hint` is provided.
+  - Updated `render_to_browser()` and `save_html_report()` to pass markdown content for title extraction.
+- **Tests**: Updated `test_html_report.py` and `test_llm.py` to reflect new behavior:
+  - Added `test_extract_markdown_title` with edge cases.
+  - Added `test_save_html_report_no_hint_no_h1` for fallback behavior.
+  - Updated existing mocks to match new function signature.
+
+**Impact**: Archive files now have descriptive names like `python_data_types_explained_20260207_003800.html` instead of `untitled_20260207_003800.html`.
+
+**Verification**:
+- All 330 tests passed.
+
+---
+
+
 
 **Summary**: Upgraded research-mode retrieval to be more reliable and higher quality by fixing chunk overlap behavior, invalidating stale vectors on cache updates, introducing hybrid dense+BM25 ranking with diversity filtering, and hardening embedding API calls with retry/backoff.
 

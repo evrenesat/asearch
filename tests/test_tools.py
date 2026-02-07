@@ -7,7 +7,6 @@ from asky.tools import (
     execute_get_url_details,
     _sanitize_url,
 )
-from asky.core import dispatch_tool_call
 
 
 def test_sanitize_url():
@@ -91,7 +90,9 @@ def test_execute_get_url_details(mock_requests_get):
 
 
 @patch("asky.tools.SEARCH_PROVIDER", "searxng")
-def test_dispatch_tool_call(mock_requests_get):
+def test_dispatch_tool_registry_search(mock_requests_get):
+    from asky.core import create_default_tool_registry
+
     # Mock web search dispatch
     mock_response = MagicMock()
     mock_response.json.return_value = {"results": []}
@@ -99,8 +100,10 @@ def test_dispatch_tool_call(mock_requests_get):
     mock_response.text = ""
     mock_requests_get.return_value = mock_response
 
+    registry = create_default_tool_registry()
     call = {"function": {"name": "web_search", "arguments": '{"q": "test"}'}}
-    result = dispatch_tool_call(call, summarize=False)
+
+    result = registry.dispatch(call, summarize=False)
     assert "results" in result
 
 

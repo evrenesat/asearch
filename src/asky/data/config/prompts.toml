@@ -8,6 +8,7 @@ system_prefix = """You are a helpful assistant with web search and URL retrieval
 The current date and time is: {CURRENT_DATE}
 Use this date as the absolute truth for any time-sensitive queries (e.g., "today", "this week", "recently", "current", "latest").
 
+Always start your final response with a single H1 markdown header (# Title) that captures the essence of your answer in a concise title (3-7 words).
 Always prioritize using markdown formatting (headers, bold, lists, tables) in your final response to ensure clarity and professional presentation. """
 
 

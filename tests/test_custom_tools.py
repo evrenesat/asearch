@@ -1,4 +1,3 @@
-from asky.core import dispatch_tool_call
 import pytest
 from unittest.mock import MagicMock, patch
 from asky.tools import _execute_custom_tool
@@ -107,13 +106,19 @@ def test_execute_custom_tool_quoting(mock_run, mock_custom_tools):
 
 @patch("subprocess.run")
 def test_dispatch_custom_tool(mock_run, mock_custom_tools):
+    from asky.core import create_default_tool_registry
+
     mock_run.return_value = MagicMock(stdout="ok", stderr="", returncode=0)
 
+    registry = create_default_tool_registry()
     call = {"function": {"name": "echo", "arguments": '{"msg": "test"}'}}
-    result = dispatch_tool_call(call, summarize=False)
+
+    result = registry.dispatch(call, summarize=False)
     print(result)
     assert result["stdout"] == "ok"
     mock_run.assert_called_once()
+
+
 @patch("subprocess.run")
 def test_custom_tool_disabled(mock_run, mock_custom_tools):
     """Test that a custom tool with enabled=False is not registered."""

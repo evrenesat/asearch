@@ -705,37 +705,6 @@ def create_research_tool_registry(
     return registry
 
 
-def run_conversation_loop(
-    model_config: Dict[str, Any],
-    messages: List[Dict[str, Any]],
-    summarize: bool,
-    verbose: bool = False,
-    usage_tracker: Optional[UsageTracker] = None,
-    open_browser: bool = False,
-) -> str:
-    """Legacy wrapper for ConversationEngine.run()."""
-    registry = create_default_tool_registry(usage_tracker=usage_tracker)
-    engine = ConversationEngine(
-        model_config=model_config,
-        tool_registry=registry,
-        summarize=summarize,
-        verbose=verbose,
-        usage_tracker=usage_tracker,
-        open_browser=open_browser,
-    )
-    return engine.run(messages)
-
-
-def dispatch_tool_call(
-    call: Dict[str, Any],
-    summarize: bool = False,
-    usage_tracker: Optional[UsageTracker] = None,
-) -> Dict[str, Any]:
-    """Legacy standalone tool dispatcher."""
-    registry = create_default_tool_registry(usage_tracker=usage_tracker)
-    return registry.dispatch(call, summarize)
-
-
 def generate_summaries(
     query: str, answer: str, usage_tracker: Optional[UsageTracker] = None
 ) -> tuple[str, str]:
